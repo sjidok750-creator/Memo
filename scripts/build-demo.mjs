@@ -24,6 +24,8 @@ for (const rel of targets) {
 
 let code = 1;
 try {
+  // 워커 코드가 담긴 설치 페이지(public/setup.html)를 최신으로 다시 만든다
+  spawnSync("node", [path.join(root, "scripts", "build-setup-page.mjs")], { cwd: root, stdio: "inherit" });
   rmSync(path.join(root, ".next"), { recursive: true, force: true });
   const r = spawnSync("npx", ["next", "build"], {
     cwd: root,
