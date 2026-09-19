@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gist-sync",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "vars": {
+    // Gist 앱 주소. 저장 후 Claude 가 알려주는 링크에 쓰인다
+    "APP_URL": "https://sjidok750-creator.github.io/Memo"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "gist-memos"
+      // database_id 는 처음 배포할 때 Wrangler/Deploy 버튼이 만들어 채운다.
+      // 수동: npx wrangler d1 create gist-memos → 나온 id 를 "database_id": "..." 로 추가
+    }
+  ]
+}

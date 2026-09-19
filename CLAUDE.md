@@ -22,6 +22,8 @@
 - `lib/richtext.tsx` `**강조**` → 굵게+밑줄+Claude 색 (`.hl`)
 - `lib/i18n.ts` UI 문자열 사전 (ko/en/ja). 컴포넌트는 `useMemos().t("key")` 로 읽는다. 분야 이름은 `CATEGORIES[].label[lang]`
 - `app/api/capture` NDJSON 진행 스트림, `app/api/backup` 내보내기/가져오기
+- `worker/` 동기화 서버 (Cloudflare Workers + D1). `/mcp/<token>` 은 Claude 커넥터(MCP, `@modelcontextprotocol/sdk` 의 WebStandard 전송, 무상태 JSON 응답), `/api/<token>/...` 은 앱 저장 API. 토큰은 D1 settings 에 있고 첫 방문 때 한 번 보여준다. 루트 tsconfig 에서 제외되어 있으니 `cd worker && npm run typecheck` 로 따로 검사한다. 로컬 테스트: `npx wrangler dev --port 8787`.
+- 정적 모드의 저장소는 `lib/store-client.ts` 하나만 쓴다: 동기화 서버가 연결돼 있으면(`lib/sync.ts`, localStorage `memo-sync`) 서버, 아니면 `demoStore`. 사진은 서버 모드에서 `img:<id>` 참조이고 `imageSrc` 가 주소로 바꾼다. 앱으로 돌아올 때(visibilitychange/focus) 서버 목록을 다시 읽는다.
 
 ## 테스트 방법
 - 서버 모드: `MEMO_MOCK=1 MEMO_DATA_DIR=<임시폴더> npx next dev -p <포트>` 후 Playwright 로 흐름 확인

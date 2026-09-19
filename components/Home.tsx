@@ -9,7 +9,8 @@ import { Capture } from "./Capture";
 import { MemoCard } from "./MemoCard";
 import { useMemos } from "./MemoProvider";
 import { IconDownload, IconSearch, IconUpload } from "./Icons";
-import { DEMO, demoStore } from "@/lib/demo";
+import { DEMO } from "@/lib/demo";
+import { clientStore } from "@/lib/store-client";
 import { Connect } from "./Connect";
 import { LangSwitch } from "./LangSwitch";
 import { useEffect } from "react";
@@ -19,7 +20,7 @@ import { ActionSheet } from "./ActionSheet";
 const KINDS: (MemoKind | "all")[] = ["all", "youtube", "book", "photo"];
 
 export function Home() {
-  const { memos, loading, category, kind, setKind, query, setQuery, health, refresh, toast, lang, t } = useMemos();
+  const { memos, loading, category, kind, setKind, query, setQuery, health, refresh, toast, lang, t, synced } = useMemos();
   const fileRef = useRef<HTMLInputElement>(null);
   const [sheet, setSheet] = useState<Memo | null>(null);
   const importReply = useReplyImport();
@@ -49,12 +50,12 @@ export function Home() {
     });
   }, [memos, category, kind, query]);
 
-  const onExport = () => {
+  const onExport = async () => {
     if (!DEMO) {
       window.location.href = "/api/backup";
       return;
     }
-    const blob = new Blob([demoStore.exportAll(lang)], { type: "application/json" });
+    const blob = new Blob([await clientStore.exportAll(lang)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `gist-backup-${new Date().toISOString().slice(0, 10)}.json`;
@@ -67,7 +68,7 @@ export function Home() {
       const parsed = JSON.parse(await file.text()) as { memos?: Memo[] };
       if (!Array.isArray(parsed.memos)) throw new Error(t("backup.badFile"));
       let result: { added: number; skipped: number };
-      if (DEMO) result = demoStore.importAll(parsed.memos, lang);
+      if (DEMO) result = await clientStore.importAll(parsed.memos, lang);
       else {
         const res = await fetch("/api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed) });
         if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || t("backup.failed"));
@@ -96,7 +97,7 @@ export function Home() {
         <LangSwitch />
       </header>
 
-      {DEMO && <Connect />}
+      {DEMO && !synced && <Connect />}
 
       {health && !health.apiKey && (
         <div className="banner">
@@ -163,7 +164,7 @@ export function Home() {
 
       <div className="backup-row">
         <span>{t("backup.label")}</span>
-        <button className="link-btn" onClick={onExport} disabled={memos.length === 0}>
+        <button className="link-btn" onClick={() => void onExport()} disabled={memos.length === 0}>
           <IconDownload size={13} /> {t("backup.export")}
         </button>
         <button className="link-btn" onClick={() => fileRef.current?.click()}>

@@ -6,6 +6,9 @@
 import type { CaptureEvent, CaptureRequest, Memo, MemoKind } from "./types";
 import { isBrowserConnected } from "./browser-key";
 import type { Lang } from "./i18n";
+import { remoteStore } from "./sync";
+
+const remoteImageUrl = (ref: string) => remoteStore.imageUrl(ref);
 
 export const DEMO = process.env.NEXT_PUBLIC_DEMO === "1";
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -22,6 +25,7 @@ export function memoHref(id: string): string {
 
 /** 사진 메모의 이미지 주소 */
 export function imageSrc(image: string): string {
+  if (image.startsWith("img:")) return remoteImageUrl(image);
   if (/^(data:|https?:|\/)/.test(image)) return image.startsWith("/") && !image.startsWith(BASE_PATH + "/") && BASE_PATH ? BASE_PATH + image : image;
   return `/api/files/${image}`;
 }
@@ -420,7 +424,8 @@ export async function demoCapture(req: CaptureRequest, emit: (e: CaptureEvent) =
   const now = new Date().toISOString();
   const notice = { ko: "(데모 모드라 실제 요약이 아니라 예시 문장을 보여준다. Claude 를 연결하면 실제 내용이 들어온다.)", en: "(Demo mode: this is sample text, not a real summary. Connect Claude to get the real thing.)", ja: "(デモモードのため実際の要約ではなくサンプル文を表示している。Claudeを接続すると実際の内容になる。)" }[lang];
   if (req.replace) {
-    const updated = demoStore.patch(req.replace, { summary: `${notice}\n\n${template.summary}`, keyPoints: template.keyPoints, quotes: template.quotes }, lang);
+    const { clientStore } = await import("./store-client");
+    const updated = await clientStore.patch(req.replace, { summary: `${notice}\n\n${template.summary}`, keyPoints: template.keyPoints, quotes: template.quotes }, lang);
     if (!updated) throw new Error("메모를 찾을 수 없습니다.");
     return updated;
   }
@@ -441,6 +446,6 @@ export async function demoCapture(req: CaptureRequest, emit: (e: CaptureEvent) =
     confidence: "low",
     model: "demo",
   };
-  demoStore.add(memo);
-  return memo;
+  const { clientStore } = await import("./store-client");
+  return clientStore.add(memo);
 }

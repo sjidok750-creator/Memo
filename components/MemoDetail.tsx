@@ -7,7 +7,8 @@ import { CATEGORIES, categoryOf } from "@/lib/categories";
 import { formatDate, kindLabel, memoToMarkdown } from "@/lib/format";
 import { renderInline, renderRich } from "@/lib/richtext";
 import type { CategoryId, Memo } from "@/lib/types";
-import { DEMO, demoStore, imageSrc } from "@/lib/demo";
+import { DEMO, imageSrc } from "@/lib/demo";
+import { clientStore } from "@/lib/store-client";
 import { KindIcon } from "./MemoCard";
 import { useMemos } from "./MemoProvider";
 import { IconArrowLeft, IconCheck, IconCopy, IconEdit, IconLink, IconPlay, IconRefresh, IconTrash, IconX } from "./Icons";
@@ -35,8 +36,11 @@ export function MemoDetail({ id }: { id: string }) {
   useEffect(() => {
     if (memos.some((m) => m.id === id)) return;
     if (DEMO) {
-      setFetched(demoStore.get(id, lang));
-      return;
+      let alive = true;
+      void clientStore.get(id, lang).then((m) => alive && setFetched(m));
+      return () => {
+        alive = false;
+      };
     }
     let alive = true;
     fetch(`/api/memos/${id}`)

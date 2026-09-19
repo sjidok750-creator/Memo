@@ -70,9 +70,34 @@ export function Sidebar() {
 
 /** 맨 위 이름 옆의 연결 상태. 누르면 연결 해제·예시 메모 지우기 메뉴 */
 function StatusPill() {
-  const { health, t } = useMemos();
+  const { health, t, synced, connectSync, disconnectSync, toast } = useMemos();
   const conn = useClaudeConnection();
   const [open, setOpen] = useState(false);
+  const [syncUrl, setSyncUrl] = useState("");
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [showSync, setShowSync] = useState(false);
+  const serverHost = (() => {
+    try {
+      return synced ? new URL(JSON.parse(window.localStorage.getItem("memo-sync") ?? "{}").server).host : "";
+    } catch {
+      return "";
+    }
+  })();
+  const doConnectSync = async () => {
+    if (!syncUrl.trim()) return;
+    setSyncBusy(true);
+    setSyncError(null);
+    const r = await connectSync(syncUrl);
+    setSyncBusy(false);
+    if (!r.ok) {
+      setSyncError(r.message);
+      return;
+    }
+    setSyncUrl("");
+    setShowSync(false);
+    toast(r.migrated ? `${t("sync.done")} · ${t("sync.migrated", { n: r.migrated })}` : t("sync.done"));
+  };
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -83,21 +108,24 @@ function StatusPill() {
 
   const connected = DEMO ? conn.connected === true : health.apiKey && !health.mock;
   const label = DEMO
-    ? connected
-      ? t("status.short.connected")
-      : t("status.short.demo")
+    ? synced
+      ? t("status.short.synced")
+      : connected
+        ? t("status.short.connected")
+        : t("status.short.demo")
     : health.apiKey
       ? health.mock
         ? t("status.short.mock")
         : t("status.short.connected")
       : t("status.short.needKey");
   const bad = !DEMO && !health.apiKey;
-  const canMenu = DEMO && connected;
+  const canMenu = DEMO;
+  const on = DEMO ? synced || connected : connected;
 
   return (
     <>
-      <button className={`status-pill ${connected ? "on" : ""} ${bad ? "bad" : ""}`} onClick={() => canMenu && setOpen(true)} disabled={!canMenu} title={connected ? `Claude · ${MODEL}` : undefined} aria-label={t("status.menu")}>
-        <span className={`status-dot ${bad ? "bad" : ""} ${!connected && !bad ? "idle" : ""}`} />
+      <button className={`status-pill ${on ? "on" : ""} ${bad ? "bad" : ""}`} onClick={() => canMenu && setOpen(true)} disabled={!canMenu} title={connected ? `Claude · ${MODEL}` : undefined} aria-label={t("status.menu")}>
+        <span className={`status-dot ${bad ? "bad" : ""} ${!on && !bad ? "idle" : ""}`} />
         {label}
       </button>
       {open &&
@@ -106,36 +134,96 @@ function StatusPill() {
           <div className="sheet" role="dialog" aria-modal="true" aria-label={t("status.menu")} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-head">
-              <span className="status-dot" />
-              <strong className="sheet-title">
-                {t("connect.connectedTitle")} · {MODEL}
-              </strong>
+              <span className={`status-dot ${!on ? "idle" : ""}`} />
+              <strong className="sheet-title">{t("status.menu")}</strong>
               <button className="btn ghost sm" onClick={() => setOpen(false)} aria-label={t("capture.close")}>
                 <IconX />
               </button>
             </div>
-            <div className="sheet-note">{t("connect.connectedBody", { model: MODEL })}</div>
-            <div className="sheet-actions">
-              {conn.examples > 0 && (
-                <button
-                  className="sheet-item"
-                  onClick={() => {
-                    conn.clearExamples();
-                    setOpen(false);
-                  }}
-                >
-                  {t("connect.clearExamples")}
+
+            <div className="sheet-section">{t("sync.title")}</div>
+            {synced ? (
+              <>
+                <div className="sheet-note">
+                  <b>{t("sync.server")}: {serverHost}</b>
+                  <br />
+                  {t("sync.connectedBody")}
+                </div>
+                <div className="sheet-actions">
+                  <button
+                    className="sheet-item danger"
+                    onClick={() => {
+                      if (!window.confirm(t("sync.disconnectConfirm"))) return;
+                      disconnectSync();
+                      setOpen(false);
+                    }}
+                  >
+                    {t("sync.disconnect")}
+                  </button>
+                </div>
+              </>
+            ) : showSync ? (
+              <div className="connect">
+                <div className="connect-row">
+                  <input
+                    autoFocus
+                    placeholder={t("sync.placeholder")}
+                    value={syncUrl}
+                    onChange={(e) => setSyncUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && void doConnectSync()}
+                    aria-label={t("sync.connect")}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button className="btn sm primary" onClick={() => void doConnectSync()} disabled={syncBusy || !syncUrl.trim()}>
+                    {syncBusy ? t("connect.checking") : t("connect.connect")}
+                  </button>
+                </div>
+                {syncError && <div className="connect-error">{syncError}</div>}
+                <div className="connect-help">{t("sync.help")}</div>
+              </div>
+            ) : (
+              <div className="sheet-actions">
+                <button className="sheet-item" onClick={() => setShowSync(true)}>
+                  {t("sync.connect")}
                 </button>
-              )}
-              <button
-                className="sheet-item danger"
-                onClick={() => {
-                  if (conn.disconnect()) setOpen(false);
-                }}
-              >
-                {t("connect.disconnect")}
-              </button>
-            </div>
+                <div className="sheet-note">{t("sync.help")}</div>
+              </div>
+            )}
+
+            <div className="sheet-section">{t("connect.apiTitle")}</div>
+            {connected ? (
+              <>
+                <div className="sheet-note">
+                  <b>{t("connect.connectedTitle")} · {MODEL}</b>
+                  <br />
+                  {t("connect.connectedBody", { model: MODEL })}
+                </div>
+                <div className="sheet-actions">
+                  {conn.examples > 0 && !synced && (
+                    <button
+                      className="sheet-item"
+                      onClick={() => {
+                        conn.clearExamples();
+                        setOpen(false);
+                      }}
+                    >
+                      {t("connect.clearExamples")}
+                    </button>
+                  )}
+                  <button
+                    className="sheet-item danger"
+                    onClick={() => {
+                      if (conn.disconnect()) setOpen(false);
+                    }}
+                  >
+                    {t("connect.disconnect")}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="sheet-note">{t("connect.demoBody")}</div>
+            )}
           </div>
         </div>,
         document.body,

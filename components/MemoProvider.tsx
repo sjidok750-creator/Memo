@@ -3,7 +3,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { CaptureRequest, CategoryId, Memo, MemoKind } from "@/lib/types";
-import { DEMO, demoCapture, demoStore, memoHref } from "@/lib/demo";
+import { DEMO, demoCapture, memoHref } from "@/lib/demo";
+import { clientStore } from "@/lib/store-client";
+import { isSynced, parseSyncUrl, remoteStore, setSync, SYNC_EVENT } from "@/lib/sync";
 import { isBrowserConnected, KEY_EVENT } from "@/lib/browser-key";
 import { MODEL } from "@/lib/claude";
 import { detectLang, LANG_KEY, translate, type Lang } from "@/lib/i18n";
@@ -60,6 +62,10 @@ interface Ctx {
   cancelJob: () => void;
   /** Claude 앱에서 받아온 답을 메모로 저장 */
   importMemo: (content: MemoContent, kind: MemoKind, source: Memo["source"]) => Promise<Memo>;
+  /** 동기화 서버 연결/해제 (정적 배포) */
+  synced: boolean;
+  connectSync: (url: string) => Promise<{ ok: true; migrated: number } | { ok: false; message: string }>;
+  disconnectSync: () => void;
 }
 
 const MemoContext = createContext<Ctx | null>(null);
@@ -128,7 +134,18 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (DEMO) {
-      setMemos(demoStore.list(lang));
+      if (clientStore.isRemote()) {
+        const cached = clientStore.cached(lang);
+        if (cached.length) {
+          setMemos(cached);
+          setLoading(false);
+        }
+        try {
+          setMemos(await clientStore.list(lang));
+        } catch {
+          /* 오프라인이면 캐시로 */
+        }
+      } else setMemos(await clientStore.list(lang));
       setLoading(false);
       return;
     }
@@ -147,7 +164,23 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
       const update = () => setHealth(isBrowserConnected() ? { apiKey: true, mock: false, model: MODEL } : { apiKey: true, mock: true, model: "demo" });
       update();
       window.addEventListener(KEY_EVENT, update);
-      return () => window.removeEventListener(KEY_EVENT, update);
+      // 동기화 서버가 바뀌면 다시 읽고, 앱으로 돌아올 때마다 새 메모(커넥터가 저장한 것)를 가져온다
+      const onSync = () => void refresh();
+      let last = 0;
+      const onVisible = () => {
+        if (document.visibilityState !== "visible" || !isSynced() || Date.now() - last < 4000) return;
+        last = Date.now();
+        void refresh();
+      };
+      window.addEventListener(SYNC_EVENT, onSync);
+      document.addEventListener("visibilitychange", onVisible);
+      window.addEventListener("focus", onVisible);
+      return () => {
+        window.removeEventListener(KEY_EVENT, update);
+        window.removeEventListener(SYNC_EVENT, onSync);
+        document.removeEventListener("visibilitychange", onVisible);
+        window.removeEventListener("focus", onVisible);
+      };
     }
     fetch("/api/health")
       .then((r) => r.json())
@@ -173,7 +206,7 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
 
   const remove = useCallback(
     async (id: string) => {
-      if (DEMO) demoStore.remove(id, lang);
+      if (DEMO) await clientStore.remove(id, lang);
       else await fetch(`/api/memos/${id}`, { method: "DELETE" });
       setMemos((prev) => prev.filter((m) => m.id !== id));
     },
@@ -183,8 +216,11 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
   const patch = useCallback(
     async (id: string, p: Partial<Memo>) => {
       if (DEMO) {
-        const memo = demoStore.patch(id, p, lang);
+        const prevLocal = memos.find((m) => m.id === id);
+        if (prevLocal) upsert({ ...prevLocal, ...p });
+        const memo = await clientStore.patch(id, p, lang);
         if (memo) upsert(memo);
+        else if (prevLocal) upsert(prevLocal);
         return memo;
       }
       const prev = memos.find((m) => m.id === id);
@@ -297,11 +333,66 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
 
   const cancelJob = useCallback(() => jobAbort.current?.abort(), []);
 
+  const [synced, setSynced] = useState(false);
+  useEffect(() => {
+    const update = () => setSynced(isSynced());
+    update();
+    window.addEventListener(SYNC_EVENT, update);
+    return () => window.removeEventListener(SYNC_EVENT, update);
+  }, []);
+  const connectSync = useCallback(
+    async (url: string) => {
+      const cfg = parseSyncUrl(url);
+      if (!cfg) return { ok: false as const, message: tRef.current("sync.bad") };
+      try {
+        await remoteStore.ping(cfg);
+      } catch (e) {
+        return { ok: false as const, message: tRef.current("sync.failed", { msg: (e as Error).message }) };
+      }
+      let migrated = 0;
+      try {
+        // 연결 전에 이 기기에 있던 실제 메모를 먼저 올린다
+        setSync(cfg);
+        migrated = await clientStore.migrateLocalToRemote(lang);
+      } catch {
+        /* 올리기 실패해도 연결은 유지 */
+      }
+      await refresh();
+      return { ok: true as const, migrated };
+    },
+    [lang, refresh],
+  );
+  const disconnectSync = useCallback(() => {
+    setSync(null);
+    void refresh();
+  }, [refresh]);
+
+  // 서버 설정 페이지의 "지금 연결하기" (#sync=<주소>) 로 들어온 경우
+  const connectSyncRef = useRef(connectSync);
+  connectSyncRef.current = connectSync;
+  useEffect(() => {
+    if (!DEMO) return;
+    const handle = () => {
+      const raw = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("sync");
+      if (!raw) return;
+      window.history.replaceState(null, "", window.location.pathname);
+      void connectSyncRef.current(raw).then((r) => {
+        const tt = tRef.current;
+        if (r.ok) toast(r.migrated ? `${tt("sync.done")} · ${tt("sync.migrated", { n: r.migrated })}` : tt("sync.done"));
+        else toast(r.message);
+      });
+    };
+    handle();
+    window.addEventListener("hashchange", handle);
+    return () => window.removeEventListener("hashchange", handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const importMemo = useCallback(
     async (content: MemoContent, kind: MemoKind, source: Memo["source"]) => {
       const now = new Date().toISOString();
       const memo: Memo = { ...content, id: `c-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind, createdAt: now, updatedAt: now, source, model: "claude-app" };
-      if (DEMO) demoStore.add(memo);
+      if (DEMO) await clientStore.add(memo);
       else {
         const res = await fetch("/api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memos: [memo] }) });
         if (!res.ok) throw new Error("save failed");
@@ -320,9 +411,9 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<Ctx>(
     () => ({
       memos, loading, category, setCategory, kind, setKind, query, setQuery, health, refresh, upsert, remove, patch, toast, lang, setLang, t,
-      job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, importMemo,
+      job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, importMemo, synced, connectSync, disconnectSync,
     }),
-    [memos, loading, category, kind, query, health, refresh, upsert, remove, patch, toast, lang, setLang, t, job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, importMemo],
+    [memos, loading, category, kind, query, health, refresh, upsert, remove, patch, toast, lang, setLang, t, job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, importMemo, synced, connectSync, disconnectSync],
   );
 
   return (
