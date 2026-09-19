@@ -225,6 +225,10 @@ const ko: Dict = {
   "status.short.synced": "동기화됨",
   "connect.apiTitle": "Claude API",
   "capture.addPhoto": "사진",
+  "sync.otherDevice": "다른 기기 연결",
+  "sync.otherDeviceHelp": "이 주소를 다른 기기(폰·태블릿)의 브라우저에서 열면 그 기기의 Gist 도 같은 메모를 보게 돼요. 메시지나 에어드롭으로 보내면 편해요. 주소에 열쇠가 들어 있으니 남에게 공유하지 마세요.",
+  "sync.copyLink": "연결 주소 복사",
+  "sync.linkCopied": "연결 주소를 복사했어요",
   "md.oneLiner": "한 줄 정리",
   "lang.label": "언어",
 };
@@ -421,6 +425,10 @@ const en: Dict = {
   "status.short.synced": "Synced",
   "connect.apiTitle": "Claude API",
   "capture.addPhoto": "Photo",
+  "sync.otherDevice": "Connect another device",
+  "sync.otherDeviceHelp": "Open this address in a browser on another device (phone, tablet) and its Gist will show the same memos. Sending it by message or AirDrop works well. It contains your key, so don't share it with anyone.",
+  "sync.copyLink": "Copy the link",
+  "sync.linkCopied": "Link copied",
   "md.oneLiner": "In one line",
   "lang.label": "Language",
 };
@@ -617,6 +625,10 @@ const ja: Dict = {
   "status.short.synced": "同期中",
   "connect.apiTitle": "Claude API",
   "capture.addPhoto": "写真",
+  "sync.otherDevice": "他の端末をつなぐ",
+  "sync.otherDeviceHelp": "このアドレスを他の端末（スマホ・タブレット）のブラウザで開くと、その端末のGistにも同じメモが表示されます。メッセージやAirDropで送ると簡単です。鍵が含まれるので他人に共有しないでください。",
+  "sync.copyLink": "接続アドレスをコピー",
+  "sync.linkCopied": "接続アドレスをコピーしました",
   "md.oneLiner": "ひとことで",
   "lang.label": "言語",
 };

@@ -7,10 +7,11 @@ import type { CategoryId } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMemos } from "./MemoProvider";
-import { BrandMark, IconX } from "./Icons";
+import { BrandMark, IconCopy, IconX } from "./Icons";
 import { DEMO } from "@/lib/demo";
 import { MODEL } from "@/lib/claude";
 import { ConnectKeyPanel, useClaudeConnection } from "./Connect";
+import { syncShareUrl } from "@/lib/sync";
 
 export function Sidebar() {
   const { memos, category, setCategory, health, lang, t } = useMemos();
@@ -77,6 +78,7 @@ function StatusPill() {
   const [syncBusy, setSyncBusy] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [showSync, setShowSync] = useState(false);
+  const shareUrl = open && synced ? syncShareUrl() : null;
   const serverHost = (() => {
     try {
       return synced ? new URL(JSON.parse(window.localStorage.getItem("memo-sync") ?? "{}").server).host : "";
@@ -148,6 +150,26 @@ function StatusPill() {
                   <b>{t("sync.server")}: {serverHost}</b>
                   <br />
                   {t("sync.connectedBody")}
+                </div>
+                <div className="share-box">
+                  <div className="share-label">{t("sync.otherDevice")}</div>
+                  <div className="connect-row">
+                    <code className="share-url">{shareUrl ?? ""}</code>
+                    <button
+                      className="btn sm primary"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(shareUrl ?? "");
+                          toast(t("sync.linkCopied"));
+                        } catch {
+                          toast(t("detail.copyFailed"));
+                        }
+                      }}
+                    >
+                      <IconCopy size={14} /> {t("sync.copyLink")}
+                    </button>
+                  </div>
+                  <div className="connect-help">{t("sync.otherDeviceHelp")}</div>
                 </div>
                 <div className="sheet-actions">
                   <button

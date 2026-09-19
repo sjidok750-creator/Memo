@@ -36,6 +36,12 @@ export function setSync(c: SyncConfig | null) {
 }
 export const isSynced = () => Boolean(getSync());
 
+/** 다른 기기에 넘겨 줄 연결 주소 */
+export function syncShareUrl(): string | null {
+  const c = getSync();
+  return c ? `${c.server}/s/${c.token}` : null;
+}
+
 /** 설정 페이지의 주소(…/s/<token>, …/mcp/<token>, …/api/<token>) 를 받아 서버와 토큰으로 나눈다 */
 export function parseSyncUrl(input: string): SyncConfig | null {
   const s = input.trim();
