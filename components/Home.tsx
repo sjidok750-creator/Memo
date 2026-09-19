@@ -16,7 +16,7 @@ import { useEffect } from "react";
 import { useReplyImport } from "./useReplyImport";
 import { ActionSheet } from "./ActionSheet";
 
-const KINDS: (MemoKind | "all")[] = ["all", "youtube", "book", "photo"];
+const KINDS: (MemoKind | "all")[] = ["all", "youtube", "book", "note", "photo"];
 
 export function Home() {
   const { memos, loading, category, kind, setKind, query, setQuery, health, refresh, toast, lang, t, synced } = useMemos();

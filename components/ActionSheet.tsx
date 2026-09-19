@@ -92,9 +92,11 @@ export function ActionSheet({ memo, onClose }: { memo: Memo; onClose: () => void
         </div>
 
         <div className="sheet-actions">
-          <button className="sheet-item" onClick={onRedo} disabled={Boolean(job)}>
-            <IconRefresh size={16} /> {t("detail.redo")}
-          </button>
+          {memo.kind !== "note" && (
+            <button className="sheet-item" onClick={onRedo} disabled={Boolean(job)}>
+              <IconRefresh size={16} /> {t("detail.redo")}
+            </button>
+          )}
           <button className="sheet-item" onClick={onCopy}>
             <IconCopy size={16} /> {t("detail.copy")}
           </button>

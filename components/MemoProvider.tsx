@@ -49,6 +49,7 @@ interface Ctx {
   upsert: (m: Memo) => void;
   remove: (id: string) => Promise<void>;
   patch: (id: string, p: Partial<Memo>) => Promise<Memo | null>;
+  saveMemo: (memo: Memo) => Promise<Memo>;
   toast: (msg: string) => void;
   lang: Lang;
   setLang: (l: Lang) => void;
@@ -388,10 +389,9 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const importMemo = useCallback(
-    async (content: MemoContent, kind: MemoKind, source: Memo["source"]) => {
-      const now = new Date().toISOString();
-      const memo: Memo = { ...content, id: `c-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind, createdAt: now, updatedAt: now, source, model: "claude-app" };
+  /** 이미 다 만들어진 메모 한 장을 저장한다 (붙여넣은 Claude 답, 직접 적은 글귀) */
+  const saveMemo = useCallback(
+    async (memo: Memo) => {
       if (DEMO) await clientStore.add(memo);
       else {
         const res = await fetch("/api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memos: [memo] }) });
@@ -402,6 +402,15 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
     },
     [upsert],
   );
+
+  const importMemo = useCallback(
+    async (content: MemoContent, kind: MemoKind, source: Memo["source"]) => {
+      const now = new Date().toISOString();
+      const memo: Memo = { ...content, id: `c-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind, createdAt: now, updatedAt: now, source, model: "claude-app" };
+      return saveMemo(memo);
+    },
+    [saveMemo],
+  );
   const clearJobError = useCallback(() => setJobError(null), []);
   const discardInterrupted = useCallback(() => {
     writePending(null);
@@ -410,10 +419,10 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<Ctx>(
     () => ({
-      memos, loading, category, setCategory, kind, setKind, query, setQuery, health, refresh, upsert, remove, patch, toast, lang, setLang, t,
+      memos, loading, category, setCategory, kind, setKind, query, setQuery, health, refresh, upsert, remove, patch, saveMemo, toast, lang, setLang, t,
       job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, importMemo, synced, connectSync, disconnectSync,
     }),
-    [memos, loading, category, kind, query, health, refresh, upsert, remove, patch, toast, lang, setLang, t, job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, importMemo, synced, connectSync, disconnectSync],
+    [memos, loading, category, kind, query, health, refresh, upsert, remove, patch, saveMemo, toast, lang, setLang, t, job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, importMemo, synced, connectSync, disconnectSync],
   );
 
   return (

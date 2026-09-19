@@ -25,6 +25,7 @@
 - `worker/gist-worker.js` 동기화 서버 **단일 파일, 의존성 없음** (Cloudflare Workers + D1). MCP 는 SDK 없이 JSON-RPC 로 직접 처리한다 (`initialize`/`tools/list`/`tools/call`, 알림은 202, GET 은 405, protocolVersion 은 클라이언트 것을 그대로 돌려준다). `/mcp/<token>` 커넥터, `/api/<token>/...` 앱 API, `/s/<token>` 은 앱으로 보내는 링크. 토큰은 D1 `settings` 에 있고 첫 방문 때 한 번만 보여준다. D1 이 없으면 설정 안내 HTML 을 주되 커넥터는 붙을 수 있게 둔다. 폰에서 대시보드에 붙여넣어 배포하는 것이 기본 경로이므로 **의존성·빌드 단계를 추가하지 말 것**. 검증: `npx wrangler dev --port 8788` 후 공식 MCP 클라이언트(`@modelcontextprotocol/sdk` 의 Client + StreamableHTTPClientTransport)로 연결해 도구를 호출해 본다.
 - 정적 모드의 저장소는 `lib/store-client.ts` 하나만 쓴다: 동기화 서버가 연결돼 있으면(`lib/sync.ts`, localStorage `memo-sync`) 서버, 아니면 `demoStore`. 사진은 서버 모드에서 `img:<id>` 참조이고 `imageSrc` 가 주소로 바꾼다. 앱으로 돌아올 때(visibilitychange/focus) 서버 목록을 다시 읽는다.
 
+- 글귀 메모(`kind: "note"`)는 사용자가 직접 적어 그대로 보관하는 명언·문장이다. `lib/note.ts` 가 만들고 `MemoProvider` 의 `saveMemo` 가 저장한다 — **Claude 도 네트워크도 거치지 않는다.** 입력창은 `detect.ts` 의 `looksLikePassage` 로 요약/보관을 스스로 고르고, 사용자가 `.mode` 토글로 언제든 바꾼다 (주소는 요약뿐이라 토글을 감춘다). 마지막 줄이 `— 출처` 꼴이면 떼어 `source.from`·`oneLiner` 로 보낸다. 글이 곧 제목이므로 카드는 제목 줄 대신 글을 그림 칸에 보여 주고, 상세 화면은 제목과 본문이 같으면 한 번만 보여 준다. 다시 요약할 원본이 없으므로 "다시 요약" 은 감춘다.
 - 대표 이미지는 `lib/thumbnail.ts` + `components/useMemoThumb.ts` 가 화면에서 찾는다 (kind `book` 만 — 영상·사진은 이미 제 그림이 있다). `book` 은 사실 "입력창에 글로 적은 것" 전부라 책·인물·개념이 다 여기 들어온다. 서지 정보(`isbn`/`publisher`/`저자+연도`)가 있으면 **책 표지**(Open Library ISBN → Google Books → Open Library 검색)를, 없으면 **위키백과**(UI 언어판 → 영어판, 제목으로 안 되면 첫 태그로)를 먼저 본다. 먼저 본 쪽에서 나오면 나머지는 부르지 않는다.
   - **주소가 실제로 열리는지는 `<img>` 의 onError/onLoad 가 판정한다** (fetch 로 확인하면 CORS 에 막힌다).
   - 엉뚱한 그림이 붙지 않게 검색 결과의 제목이 맞는 것만 쓴다 (동음이의·목록 문서 제외). 못 찾으면 글자 표지로 돌아간다 — 틀린 그림보다 낫다.
@@ -44,5 +45,7 @@
 - 진행 단계는 서버가 stage `id` 만 의미 있게 보내고 클라이언트가 `stage.<id>` 키로 번역한다.
 - 요약 본문의 강조는 `**...**` 하나만 쓴다. 다른 마크다운은 렌더러가 지원하지 않는다.
 - 모바일(≤900px)에서 가로 넘침이 생기면 안 된다. 검증은 스크린샷이 아니라 `document.documentElement.scrollWidth === innerWidth` 로.
+- `MemoContentSchema.meta` 에 항목을 더할 때는 `EMPTY_META`(schema.ts)만 늘리면 된다. 받아들이는 쪽(백업 가져오기, Claude 답 파싱, 글귀)은 모두 이걸 깔고 덮어쓰므로 예전 백업이 검증에 걸리지 않는다. **직접 meta 를 적어 넣지 말 것.**
+- 새 `MemoKind` 를 더하면 `app/api/backup` 의 허용 목록도 같이 고쳐야 한다 (안 그러면 서버 모드에서 조용히 버려진다). 동기화 서버는 kind 를 검사하지 않으므로 워커 재배포는 필요 없다.
 - `.card-media img` 는 (클래스+요소라) 클래스 하나짜리 선택자보다 세다. 카드 안 이미지 규칙은 `.card-book .cover-img` 처럼 앞에 하나 더 붙일 것.
 - 새 API 라우트는 정적 데모 빌드에서 자동으로 제외되지만, 새 동적 페이지를 만들면 `scripts/build-demo.mjs` 의 목록에 추가해야 한다.

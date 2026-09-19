@@ -6,13 +6,14 @@ import { categoryOf } from "@/lib/categories";
 import { formatDateShort, kindLabel } from "@/lib/format";
 import type { Memo } from "@/lib/types";
 import { imageSrc, memoHref } from "@/lib/demo";
-import { IconBook, IconImage, IconMore, IconPlay } from "./Icons";
+import { IconBook, IconImage, IconMore, IconPlay, IconQuote } from "./Icons";
 import { useMemos } from "./MemoProvider";
 import { useMemoThumb } from "./useMemoThumb";
 
 export function KindIcon({ kind, size = 13 }: { kind: Memo["kind"]; size?: number }) {
   if (kind === "youtube") return <IconPlay size={size} />;
   if (kind === "book") return <IconBook size={size} />;
+  if (kind === "note") return <IconQuote size={size} />;
   return <IconImage size={size} />;
 }
 
@@ -104,6 +105,17 @@ export function MemoCard({ memo, index = 0, onMenu }: { memo: Memo; index?: numb
           </div>
         </div>
       )}
+      {memo.kind === "note" &&
+        (memo.source.image ? (
+          <div className="card-media">
+            <img src={imageSrc(memo.source.image)} alt="" loading="lazy" draggable={false} />
+          </div>
+        ) : (
+          <div className="card-media card-note" style={c}>
+            <IconQuote size={18} />
+            <p>{memo.summary}</p>
+          </div>
+        ))}
       {memo.kind === "photo" && memo.source.image && (
         <div className="card-media">
           <img src={imageSrc(memo.source.image)} alt="" loading="lazy" draggable={false} />
@@ -144,8 +156,13 @@ export function MemoCard({ memo, index = 0, onMenu }: { memo: Memo; index?: numb
             {cat.label[lang]}
           </span>
         </div>
-        <h3 className="card-title">{memo.title}</h3>
-        <p className="card-line">{memo.oneLiner}</p>
+        {/* 글귀는 그림 칸에 글이 그대로 있으므로 제목을 또 쓰지 않는다 */}
+        {memo.kind !== "note" && <h3 className="card-title">{memo.title}</h3>}
+        {memo.kind === "note" ? (
+          memo.oneLiner.trim() && <p className="card-line from">{memo.oneLiner}</p>
+        ) : (
+          <p className="card-line">{memo.oneLiner}</p>
+        )}
         <div className="card-foot">
           <span className="tags">{memo.tags.slice(0, 3).map((x) => `#${x}`).join("  ")}</span>
           <time dateTime={memo.createdAt}>{formatDateShort(memo.createdAt, lang)}</time>

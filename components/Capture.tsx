@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { detectInput } from "@/lib/detect";
+import { buildNoteMemo } from "@/lib/note";
 import { fileToDataUrl } from "@/lib/image-client";
 import { DEMO } from "@/lib/demo";
 import { buildClaudePrompt, claudeNewUrl, clearPendingImport, looksLikeClaudeReply, readPendingImport, savePendingImport } from "@/lib/claude-app";
@@ -10,13 +11,14 @@ import { IconClipboard } from "./Icons";
 import { IconSpark } from "./Icons";
 import type { CaptureRequest, MemoKind } from "@/lib/types";
 import { useMemos } from "./MemoProvider";
-import { IconArrowRight, IconBook, IconCheck, IconImage, IconPlay, IconX } from "./Icons";
+import { IconArrowRight, IconBook, IconCheck, IconImage, IconPlay, IconQuote, IconX } from "./Icons";
 
 /** 종류별 예상 단계 (서버가 보내는 stage id 로 실제 진행이 표시된다) */
 const EXPECTED: Record<MemoKind, string[]> = {
   youtube: ["source", "transcript", "summarize", "save"],
   book: ["search", "summarize", "save"],
   photo: ["upload", "summarize", "save"],
+  note: [],
 };
 /** 서버 stage id → 화면에 놓을 자리 */
 const SLOT: Record<string, string> = {
@@ -28,7 +30,7 @@ const SLOT: Record<string, string> = {
 };
 
 export function Capture() {
-  const { health, lang, t, job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, toast } = useMemos();
+  const { health, lang, t, job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, saveMemo, toast } = useMemos();
   const importReply = useReplyImport();
   const importing = useRef(false);
   const [awaiting, setAwaiting] = useState(false);
@@ -43,6 +45,17 @@ export function Capture() {
 
   const detected = useMemo(() => detectInput(text), [text]);
   const busy = Boolean(job && !job.replace);
+
+  /**
+   * 무엇을 할지: 요약(Claude) 또는 보관(적은 그대로).
+   * 평소에는 입력을 보고 알아서 고르고("auto"), 사용자가 한 번 고르면 그대로 따른다.
+   */
+  const [pickedMode, setPickedMode] = useState<"summarize" | "keep" | null>(null);
+  // 주소는 요약밖에 할 일이 없다
+  const linkOnly = detected.kind === "youtube" || detected.kind === "unsupported-url";
+  const mode: "summarize" | "keep" = linkOnly ? "summarize" : (pickedMode ?? (detected.kind === "note" ? "keep" : "summarize"));
+  // 고를 여지가 있을 때만 토글을 보여 준다 (붙여넣은 Claude 답·주소는 할 일이 정해져 있다)
+  const canChoose = detected.kind !== "import" && !linkOnly;
 
   useEffect(() => {
     // Claude 앱으로 보낸 뒤 돌아왔는지 (답을 기다리는 중)
@@ -119,8 +132,10 @@ export function Capture() {
     };
   }, [acceptFile]);
 
-  const canSubmit = image ? true : detected.kind === "youtube" || detected.kind === "book";
-  const canOpenClaude = image ? true : detected.kind === "youtube" || detected.kind === "book";
+  const hasText = Boolean(text.trim());
+  const canSubmit = image ? true : detected.kind === "youtube" || detected.kind === "book" || detected.kind === "note";
+  const canOpenClaude = canSubmit;
+  const canKeep = Boolean(image || (image ? note.trim() : text.trim()));
   const apiReady = DEMO ? health?.mock === false : health?.apiKey === true;
 
   /** Claude 앱에서 받아온 답이 붙여넣어지면 바로 저장 (사진이 붙어 있으면 메모 칸에 붙여넣게 된다) */
@@ -165,7 +180,7 @@ export function Capture() {
     let req: CaptureRequest;
     if (image) req = { kind: "photo", image: image.dataUrl, note: note.trim() || undefined, lang };
     else if (detected.kind === "youtube") req = { kind: "youtube", input: text.trim(), lang };
-    else if (detected.kind === "book") req = { kind: "book", input: text.trim(), lang };
+    else if (detected.kind === "book" || detected.kind === "note") req = { kind: "book", input: text.trim(), lang };
     else return;
     savePendingImport({ kind: req.kind, input: req.input, image: req.image, note: req.note, lang, at: Date.now() });
     setAwaiting(true);
@@ -193,7 +208,7 @@ export function Capture() {
     } else if (detected.kind === "youtube") {
       req = { kind: "youtube", input: text.trim(), lang };
       label = text.trim();
-    } else if (detected.kind === "book") {
+    } else if (detected.kind === "book" || detected.kind === "note") {
       req = { kind: "book", input: text.trim(), lang };
       label = text.trim();
     } else return;
@@ -204,8 +219,35 @@ export function Capture() {
     startJob(req, label);
   };
 
+  /** 적은 글을 그대로 메모로 보관한다 */
+  const keep = async () => {
+    if (!canKeep) return;
+    const body = (image ? note : text).trim();
+    const memo = buildNoteMemo({ text: body, image: image?.dataUrl, fallbackTitle: t("note.untitled") });
+    setLocalError(null);
+    try {
+      await saveMemo(memo);
+      setText("");
+      setNote("");
+      setImage(null);
+      setPickedMode(null);
+      toast(t("capture.kept"));
+    } catch {
+      setLocalError(t("capture.keepFailed"));
+    }
+  };
+
   const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+    // 글귀는 여러 줄로 적는 것이 보통이라 Enter 는 줄바꿈으로 두고, ⌘/Ctrl+Enter 로 보관한다
+    if (mode === "keep") {
+      if (e.metaKey || e.ctrlKey) {
+        e.preventDefault();
+        void keep();
+      }
+      return;
+    }
+    if (!e.shiftKey) {
       e.preventDefault();
       submit();
     }
@@ -257,7 +299,9 @@ export function Capture() {
     );
   }
 
-  const placeholder = image ? t("capture.notePlaceholder") : t("capture.placeholder");
+  const placeholder = image
+    ? t(mode === "keep" ? "capture.keepNotePlaceholder" : "capture.notePlaceholder")
+    : t(mode === "keep" ? "capture.keepPlaceholder" : "capture.placeholder");
   const error = localError ?? jobError?.message ?? null;
 
   return (
@@ -322,18 +366,35 @@ export function Capture() {
           ) : (
             <textarea ref={textRef} rows={1} placeholder={placeholder} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} onPaste={onPaste} aria-label={t("capture.placeholder")} />
           )}
-          {apiReady ? (
+          {mode === "keep" ? (
+            <button className="btn primary" onClick={() => void keep()} disabled={!canKeep}>
+              <IconQuote size={14} /> {t("capture.keep")}
+            </button>
+          ) : apiReady ? (
             <button className="btn primary" onClick={submit} disabled={!canSubmit}>
               {t("capture.submit")} <IconArrowRight size={15} />
             </button>
           ) : (
-            <button className="btn primary" onClick={() => void openClaude()} disabled={!canOpenClaude}>
-              <IconSpark size={14} /> {t("app.button")}
+            <button className="btn primary" onClick={() => void openClaude()} disabled={!canOpenClaude} title={t("app.button")}>
+              <IconSpark size={14} />
+              <span className="wide-only">{t("app.button")}</span>
+              <span className="narrow-only">{t("capture.mode.summarize")}</span>
             </button>
           )}
         </div>
         <div className="capture-meta">
-          <Detect kind={replyText ? "import" : image ? "photo" : detected.kind} />
+          {canChoose && !replyText ? (
+            <div className="mode" role="group" aria-label={t("capture.modeLabel")}>
+              <button className={mode === "summarize" ? "on" : ""} onClick={() => setPickedMode("summarize")} aria-pressed={mode === "summarize"}>
+                <IconSpark size={12} /> {t("capture.mode.summarize")}
+              </button>
+              <button className={mode === "keep" ? "on" : ""} onClick={() => setPickedMode("keep")} aria-pressed={mode === "keep"}>
+                <IconQuote size={12} /> {t("capture.mode.keep")}
+              </button>
+            </div>
+          ) : (
+            <Detect kind={replyText ? "import" : image ? "photo" : detected.kind} />
+          )}
           <span className="capture-meta-right">
             {!image && (
               <button
@@ -348,7 +409,16 @@ export function Capture() {
               </button>
             )}
             <span className="kbd">
-              <kbd>Enter</kbd> {t("capture.enterHint")}
+              {mode === "keep" ? (
+                <>
+                  <kbd>⌘</kbd>
+                  <kbd>Enter</kbd> {t("capture.keepHint")}
+                </>
+              ) : (
+                <>
+                  <kbd>Enter</kbd> {t("capture.enterHint")}
+                </>
+              )}
             </span>
           </span>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void acceptFile(e.target.files?.[0])} />
@@ -382,7 +452,7 @@ export function Capture() {
   );
 }
 
-function Detect({ kind }: { kind: "empty" | "youtube" | "book" | "unsupported-url" | "photo" | "import" }) {
+function Detect({ kind }: { kind: "empty" | "youtube" | "book" | "note" | "unsupported-url" | "photo" | "import" }) {
   const { t } = useMemos();
   switch (kind) {
     case "import":
@@ -401,6 +471,12 @@ function Detect({ kind }: { kind: "empty" | "youtube" | "book" | "unsupported-ur
       return (
         <span className="detect on">
           <IconPlay size={12} /> {t("capture.detectYoutube")}
+        </span>
+      );
+    case "note":
+      return (
+        <span className="detect on">
+          <IconQuote size={13} /> {t("capture.detectNote")}
         </span>
       );
     case "book":

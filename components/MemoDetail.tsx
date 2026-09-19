@@ -141,6 +141,8 @@ export function MemoDetail({ id }: { id: string }) {
           <IconLink /> {t("detail.watch")}
         </a>,
       );
+  } else if (memo.kind === "note") {
+    if (memo.source.from) sourceBits.push(<span key="f">{memo.source.from}</span>);
   } else if (memo.source.note) {
     sourceBits.push(<span key="n">{t("detail.myNote", { note: memo.source.note })}</span>);
   }
@@ -152,9 +154,11 @@ export function MemoDetail({ id }: { id: string }) {
           <IconArrowLeft size={15} /> {t("detail.back")}
         </Link>
         <div className="article-actions">
-          <button className="btn ghost sm" onClick={onRedo} disabled={Boolean(redo)} title={t("detail.redoTitle")}>
-            <IconRefresh size={15} className={redo ? "spin" : undefined} /> {t("detail.redo")}
-          </button>
+          {memo.kind !== "note" && (
+            <button className="btn ghost sm" onClick={onRedo} disabled={Boolean(redo)} title={t("detail.redoTitle")}>
+              <IconRefresh size={15} className={redo ? "spin" : undefined} /> {t("detail.redo")}
+            </button>
+          )}
           <button className="btn ghost sm" onClick={onCopy}>
             <IconCopy size={15} /> {t("detail.copy")}
           </button>
@@ -261,12 +265,15 @@ export function MemoDetail({ id }: { id: string }) {
         </div>
       )}
 
-      <div className="callout">{memo.oneLiner}</div>
+      {memo.oneLiner.trim() && memo.kind !== "note" && <div className="callout">{memo.oneLiner}</div>}
 
-      <section className="section">
-        <div className="section-label">{t("detail.summary")}</div>
-        <div className="prose">{renderRich(memo.summary)}</div>
-      </section>
+      {/* 글귀는 제목이 곧 그 문장인 경우가 많아 같은 글을 두 번 보여 주지 않는다 */}
+      {memo.summary.trim() && !(memo.kind === "note" && memo.summary.trim() === memo.title.trim()) && (
+        <section className="section">
+          <div className="section-label">{t(memo.kind === "note" ? "detail.passage" : "detail.summary")}</div>
+          <div className={memo.kind === "note" ? "prose passage" : "prose"}>{renderRich(memo.summary)}</div>
+        </section>
+      )}
 
       {memo.keyPoints.length > 0 && (
         <section className="section">

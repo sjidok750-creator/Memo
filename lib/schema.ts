@@ -1,5 +1,12 @@
 import { z } from "zod";
 import { CATEGORY_GUIDE, CATEGORY_IDS } from "./categories";
+import type { MemoMeta } from "./types";
+
+/**
+ * meta 의 빈 값. 스키마에 항목을 더해도 예전 백업·Claude 답이 검증에 걸리지 않도록
+ * 받아들이는 쪽에서 항상 이걸 깔고 덮어쓴다.
+ */
+export const EMPTY_META: MemoMeta = { author: null, publisher: null, year: null, channel: null, duration: null, isbn: null };
 
 /** Claude 구조화 출력 스키마. MemoContent 와 1:1 로 대응한다. */
 export const MemoContentSchema = z.object({

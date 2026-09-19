@@ -414,6 +414,7 @@ export async function demoCapture(req: CaptureRequest, emit: (e: CaptureEvent) =
     youtube: ["source", "transcript", "summarize-transcript", "save"],
     book: ["search", "summarize-book", "save"],
     photo: ["upload", "summarize-photo", "save"],
+    note: [],
   };
   for (const id of stages[req.kind]) {
     emit({ type: "stage", id, label: id });

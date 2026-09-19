@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { MemoContentSchema } from "@/lib/schema";
+import { EMPTY_META, MemoContentSchema } from "@/lib/schema";
 import { importMemos, listMemos, readImageAsDataUrl } from "@/lib/store";
 import type { Memo } from "@/lib/types";
 
@@ -46,8 +46,9 @@ export async function POST(req: NextRequest) {
   if (!body || !Array.isArray(body.memos)) return Response.json({ error: "백업 파일 형식이 아닙니다." }, { status: 400 });
   const valid: Memo[] = [];
   for (const raw of body.memos as Partial<Memo>[]) {
-    if (!raw || typeof raw.id !== "string" || !["youtube", "book", "photo"].includes(raw.kind ?? "")) continue;
-    const content = MemoContentSchema.safeParse(raw);
+    if (!raw || typeof raw.id !== "string" || !["youtube", "book", "photo", "note"].includes(raw.kind ?? "")) continue;
+    // meta 항목이 늘어도 예전 백업이 그대로 들어오게 빈 값을 깔아 준다
+    const content = MemoContentSchema.safeParse({ ...raw, meta: { ...EMPTY_META, ...(raw.meta ?? {}) } });
     if (!content.success) continue;
     valid.push({
       ...content.data,

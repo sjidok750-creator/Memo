@@ -26,6 +26,11 @@ export const IconBook = ({ size = 16, ...p }: P) => (
     <path d="M9 7h7M9 11h5" />
   </svg>
 );
+export const IconQuote = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, p)} fill="currentColor" stroke="none">
+    <path d="M9.6 5.4C6.5 6.8 4.6 9.6 4.6 13v5.6h6.2v-6.2H7.7c0-2.2 1-3.8 3-4.8zM19.4 5.4c-3.1 1.4-5 4.2-5 7.6v5.6h6.2v-6.2h-3.1c0-2.2 1-3.8 3-4.8z" />
+  </svg>
+);
 export const IconImage = ({ size = 16, ...p }: P) => (
   <svg {...base(size, p)}>
     <rect x="3" y="4" width="18" height="16" rx="2.5" />

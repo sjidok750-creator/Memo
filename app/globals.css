@@ -335,7 +335,7 @@ img {
   background: var(--bg-elev);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  padding: 22px 22px 18px;
+  padding: 15px 16px 13px;
   box-shadow: var(--shadow-sm);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -346,11 +346,11 @@ img {
 .capture-field {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   border: 1.5px solid var(--line-strong);
   border-radius: 14px;
   background: var(--bg);
-  padding: 12px 14px 10px;
+  padding: 9px 12px 8px;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .capture-field:focus-within {
@@ -364,12 +364,12 @@ img {
 }
 .capture textarea {
   flex: 1;
-  min-height: 30px;
-  max-height: 160px;
+  min-height: 28px;
+  max-height: 180px;
   resize: none;
   border: 0;
   background: transparent;
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1.5;
   padding: 0;
   outline: none;
@@ -393,6 +393,46 @@ img {
   gap: 10px;
   flex: none;
 }
+/* 요약 / 보관 고르기. 판별 결과를 그냥 알려 주는 대신 바꿀 수 있게 한다 */
+/* 좁은 화면에서만 / 넓은 화면에서만 보이는 글자 */
+.narrow-only {
+  display: none;
+}
+@media (max-width: 600px) {
+  .wide-only {
+    display: none;
+  }
+  .narrow-only {
+    display: inline;
+  }
+}
+
+.mode {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  flex: none;
+}
+.mode button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: background 0.12s, color 0.12s;
+}
+.mode button.on {
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+
 .photo-btn {
   display: inline-flex;
   align-items: center;
@@ -886,6 +926,30 @@ img {
   border-radius: 3px;
   box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.65);
 }
+/* 글귀 카드: 표지 대신 적어 둔 글을 그대로 보여 준다 */
+.card-note {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+  padding: 16px 18px;
+  background:
+    radial-gradient(110% 80% at 0% 0%, color-mix(in srgb, var(--c) 16%, transparent), transparent 62%),
+    var(--bg-sunken);
+  color: var(--c);
+}
+.card-note p {
+  font-size: 14.5px;
+  line-height: 1.55;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .card-body {
   padding: 14px 16px 15px;
   display: flex;
@@ -952,6 +1016,12 @@ img {
   overflow: hidden;
   margin: 0;
 }
+/* 글귀 카드의 출처 줄 */
+.card-line.from {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
 .card-foot {
   margin-top: auto;
   padding-top: 6px;
@@ -1200,6 +1270,12 @@ img {
   border-radius: 4px;
   box-shadow: 0 18px 34px -16px rgba(0, 0, 0, 0.7);
 }
+.prose.passage {
+  font-size: 18px;
+  line-height: 1.75;
+  white-space: pre-line;
+}
+
 .thumb-credit {
   position: absolute;
   right: 10px;
@@ -1911,14 +1987,20 @@ h1.editable:hover .edit-hint {
     font-size: 13px;
   }
   .capture {
-    padding: 16px 14px 14px;
+    padding: 13px 13px 11px;
   }
+  /* 버튼을 아래로 떨구지 않고 입력줄 옆에 둔다 (상자가 한참 낮아진다) */
   .capture-row {
-    flex-direction: column;
-    align-items: stretch;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .capture-row > .btn.primary {
+    flex: none;
+    padding: 9px 12px;
+    white-space: nowrap;
   }
   .capture textarea:not(.note) {
-    min-height: 3.1em; /* 안내 문구가 두 줄로 접혀도 잘리지 않게 */
+    min-height: 2.2em; /* 안내 문구가 두 줄로 접혀도 잘리지 않게 */
     font-size: 16px; /* iOS 자동 확대 방지 */
   }
   .btn.primary {

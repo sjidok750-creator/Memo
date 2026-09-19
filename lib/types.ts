@@ -1,4 +1,5 @@
-export type MemoKind = "youtube" | "book" | "photo";
+/** note = 사용자가 직접 적어 보관하는 명언·글귀 (Claude 를 거치지 않는다) */
+export type MemoKind = "youtube" | "book" | "photo" | "note";
 
 export type CategoryId =
   | "work"
@@ -54,6 +55,8 @@ export interface MemoSource {
   image?: string;
   /** 사진에 덧붙인 사용자 메모 */
   note?: string;
+  /** 글귀: 사용자가 적어 둔 출처 (없으면 없음) */
+  from?: string;
   /** 유튜브 자막을 실제로 읽었는지 */
   transcript?: boolean;
 }
