@@ -31,7 +31,7 @@ export async function browserCapture(req: CaptureRequest, emit: (e: CaptureEvent
     const info = { id: videoId, url: `https://www.youtube.com/watch?v=${videoId}`, title: null, author: null, thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` };
     emit({ type: "stage", id: "transcript-web", label: "브라우저에서는 자막을 못 읽어 웹에서 조사" });
     emit({ type: "stage", id: "summarize-web", label: "영상 내용 조사 후 요약 작성" });
-    const { content, model } = await summarizeYouTube(info, null, signal, lang);
+    const { content, model } = await summarizeYouTube(info, null, signal, lang, (id) => emit({ type: "stage", id, label: id }));
     emit({ type: "stage", id: "save", label: "분야 분류 및 저장" });
     const memo: Memo = { ...base, ...content, kind: "youtube", model, source: { url: info.url, videoId, thumbnail: info.thumbnail, transcript: false } };
     demoStore.add(memo);
@@ -43,7 +43,7 @@ export async function browserCapture(req: CaptureRequest, emit: (e: CaptureEvent
     if (!query) throw new Error("책 제목을 입력하세요.");
     emit({ type: "stage", id: "search", label: "책 정보 검색" });
     emit({ type: "stage", id: "summarize-book", label: "핵심 내용 요약 · 명문장 발췌" });
-    const { content, model } = await summarizeBook(query, signal, lang);
+    const { content, model } = await summarizeBook(query, signal, lang, (id) => emit({ type: "stage", id, label: id }));
     emit({ type: "stage", id: "save", label: "분야 분류 및 저장" });
     const memo: Memo = { ...base, ...content, kind: "book", model, source: { query } };
     demoStore.add(memo);
@@ -69,12 +69,12 @@ async function resummarize(memo: Memo, emit: (e: CaptureEvent) => void, signal: 
     if (!videoId) throw new Error("이 메모에는 영상 주소가 없습니다.");
     emit({ type: "stage", id: "summarize-web", label: "영상 내용 조사 후 요약 작성" });
     const info = { id: videoId, url: `https://www.youtube.com/watch?v=${videoId}`, title: null, author: null, thumbnail: memo.source.thumbnail ?? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` };
-    const { content, model } = await summarizeYouTube(info, null, signal, lang);
+    const { content, model } = await summarizeYouTube(info, null, signal, lang, (id) => emit({ type: "stage", id, label: id }));
     return demoStore.patch(memo.id, { ...content, model }, lang)!;
   }
   if (memo.kind === "book") {
     emit({ type: "stage", id: "summarize-book", label: "핵심 내용 요약 · 명문장 발췌" });
-    const { content, model } = await summarizeBook(memo.source.query || memo.title, signal, lang);
+    const { content, model } = await summarizeBook(memo.source.query || memo.title, signal, lang, (id) => emit({ type: "stage", id, label: id }));
     return demoStore.patch(memo.id, { ...content, model }, lang)!;
   }
   const m = /^data:(image\/(?:jpeg|png|webp|gif));base64,(.+)$/s.exec(memo.source.image ?? "");

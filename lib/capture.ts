@@ -45,7 +45,7 @@ export async function runCapture(req: CaptureRequest, emit: (e: CaptureEvent) =>
     emit({ type: "stage", id: "transcript", label: "자막 수집" });
     const transcript = await fetchTranscript(videoId);
     emit({ type: "stage", id: transcript ? "summarize-transcript" : "summarize-web", label: transcript ? "자막 읽고 요약 작성" : "자막이 없어 웹에서 조사 후 요약" });
-    const { content, model } = await summarizeYouTube(info, transcript, signal, lang);
+    const { content, model } = await summarizeYouTube(info, transcript, signal, lang, (id) => emit({ type: "stage", id, label: id }));
     emit({ type: "stage", id: "save", label: "분야 분류 및 저장" });
     const memo = await createMemo({
       ...base,
@@ -64,7 +64,7 @@ export async function runCapture(req: CaptureRequest, emit: (e: CaptureEvent) =>
     if (query.length > 200) throw new CaptureError("책 제목이 너무 깁니다.");
     emit({ type: "stage", id: "search", label: "책 정보 검색" });
     emit({ type: "stage", id: "summarize-book", label: "핵심 내용 요약 · 명문장 발췌" });
-    const { content, model } = await summarizeBook(query, signal, lang);
+    const { content, model } = await summarizeBook(query, signal, lang, (id) => emit({ type: "stage", id, label: id }));
     emit({ type: "stage", id: "save", label: "분야 분류 및 저장" });
     return { memo: await createMemo({ ...base, ...content, kind: "book", model, source: { query } }), duplicate: false };
   }
@@ -92,7 +92,7 @@ async function resummarize(memo: Memo, emit: (e: CaptureEvent) => void, signal: 
     emit({ type: "stage", id: "transcript", label: "자막 수집" });
     const transcript = await fetchTranscript(videoId);
     emit({ type: "stage", id: transcript ? "summarize-transcript" : "summarize-web", label: transcript ? "자막 읽고 요약 작성" : "자막이 없어 웹에서 조사 후 요약" });
-    const { content, model } = await summarizeYouTube(info, transcript, signal, lang);
+    const { content, model } = await summarizeYouTube(info, transcript, signal, lang, (id) => emit({ type: "stage", id, label: id }));
     emit({ type: "stage", id: "save", label: "저장" });
     const updated = await updateMemo(memo.id, {
       ...content,
@@ -106,7 +106,7 @@ async function resummarize(memo: Memo, emit: (e: CaptureEvent) => void, signal: 
     const query = memo.source.query || memo.title;
     emit({ type: "stage", id: "search", label: "책 정보 검색" });
     emit({ type: "stage", id: "summarize-book", label: "핵심 내용 요약 · 명문장 발췌" });
-    const { content, model } = await summarizeBook(query, signal, lang);
+    const { content, model } = await summarizeBook(query, signal, lang, (id) => emit({ type: "stage", id, label: id }));
     emit({ type: "stage", id: "save", label: "저장" });
     return (await updateMemo(memo.id, { ...content, model }))!;
   }

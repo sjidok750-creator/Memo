@@ -8,7 +8,7 @@
 - `npm run build:demo` GitHub Pages 용 정적 데모 (`DEMO_BASE_PATH=/Memo`) — app/api 와 app/memo/[id] 를 빌드 중 잠시 치운다
 
 ## 구조
-- `lib/claude.ts` Claude 호출과 프롬프트. 모델 `claude-opus-5`, 구조화 출력(`lib/schema.ts`), `fallbacks: "default"`
+- `lib/claude.ts` Claude 호출과 프롬프트. 모델 `claude-opus-5`, effort 기본 medium, `fallbacks: "default"`. 웹 도구가 필요한 흐름(책, 자막 없는 유튜브)은 **조사(runResearch, 도구+텍스트) → 구조화(runSummary, 도구 없음+JSON 스키마)** 두 요청으로 나눈다. 웹 검색 결과의 인용은 구조화 출력과 같이 쓰면 400 이라 한 요청에 못 넣는다. runSummary 는 400 이면 fallbacks 제거 → 형식 제거(JSON 텍스트) 순으로 낮춰 재시도한다.
 - `lib/capture.ts` 입력 종류별 파이프라인 (`replace` 로 기존 메모 다시 요약)
 - `lib/youtube.ts` 영상 ID 파싱, 자막 수집 (watch 페이지 → InnerTube)
 - `lib/store.ts` `data/memos.json` + `data/uploads/` 파일 저장소
