@@ -4,6 +4,7 @@
  * 예시 메모를 다루고 요약 과정을 흉내낸다. `NEXT_PUBLIC_DEMO=1` 로 켜진다.
  */
 import type { CaptureEvent, CaptureRequest, Memo, MemoKind } from "./types";
+import { isBrowserConnected } from "./browser-key";
 
 export const DEMO = process.env.NEXT_PUBLIC_DEMO === "1";
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -186,8 +187,20 @@ export const demoStore = {
   remove(id: string) {
     save(load().filter((m) => m.id !== id));
   },
+  add(memo: Memo) {
+    const all = load();
+    all.push(memo);
+    save(all);
+  },
   reset() {
     save(DEMO_MEMOS);
+  },
+  /** 예시 메모만 지운다 (실제 요약한 메모는 남긴다) */
+  clearExamples(): number {
+    const all = load();
+    const kept = all.filter((m) => m.model !== "demo");
+    save(kept);
+    return all.length - kept.length;
   },
   exportAll(): string {
     return JSON.stringify({ app: "memo", version: 1, exportedAt: new Date().toISOString(), memos: load() }, null, 2);
@@ -225,8 +238,17 @@ const sleep = (ms: number, signal?: AbortSignal) =>
     });
   });
 
-/** 요약 과정을 흉내내고 예시 메모를 하나 만든다 */
+/**
+ * 정적 배포에서의 캡처. API 키가 연결돼 있으면 브라우저에서 Claude 를 직접 불러 실제로 요약하고,
+ * 아니면 과정을 흉내내고 예시 메모를 하나 만든다.
+ */
 export async function demoCapture(req: CaptureRequest, emit: (e: CaptureEvent) => void, signal?: AbortSignal): Promise<Memo> {
+  if (isBrowserConnected()) {
+    const { browserCapture } = await import("./capture-browser");
+    const { memo, duplicate } = await browserCapture(req, emit, signal);
+    if (duplicate) emit({ type: "duplicate", memo });
+    return memo;
+  }
   const stages: Record<MemoKind, [string, string][]> = {
     youtube: [
       ["source", "영상 정보 확인"],

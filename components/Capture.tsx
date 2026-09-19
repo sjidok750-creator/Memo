@@ -6,6 +6,7 @@ import { detectInput } from "@/lib/detect";
 import { fileToDataUrl } from "@/lib/image-client";
 import { DEMO, demoCapture, memoHref } from "@/lib/demo";
 import { captureStream } from "@/lib/capture-client";
+import { friendlyError } from "@/lib/errors";
 import type { CaptureRequest, MemoKind } from "@/lib/types";
 import { useMemos } from "./MemoProvider";
 import { IconArrowRight, IconBook, IconCheck, IconImage, IconPlay, IconX } from "./Icons";
@@ -81,7 +82,7 @@ export function Capture() {
         return;
       }
       try {
-        const dataUrl = await fileToDataUrl(file);
+        const dataUrl = await fileToDataUrl(file, DEMO ? 1280 : 1600, DEMO ? 0.8 : 0.86);
         setImage({ dataUrl, name: file.name });
         setPhase({ name: "idle" });
       } catch (e) {
@@ -150,15 +151,26 @@ export function Capture() {
 
     try {
       if (DEMO) {
-        const memo = await demoCapture(req, (ev) => {
-          if (ev.type === "stage") setPhase((p) => (p.name === "busy" ? { ...p, current: ev.id } : p));
-        }, ctrl.signal);
+        let dup = false;
+        const memo = await demoCapture(
+          req,
+          (ev) => {
+            if (ev.type === "stage") {
+              setPhase((p) =>
+                p.name === "busy"
+                  ? { ...p, current: ev.id, stages: p.stages.some((s) => s.id === ev.id) ? p.stages.map((s) => (s.id === ev.id ? { ...s, label: ev.label } : s)) : [...p.stages, { id: ev.id, label: ev.label }] }
+                  : p,
+              );
+            } else if (ev.type === "duplicate") dup = true;
+          },
+          ctrl.signal,
+        );
         upsert(memo);
         setText("");
         setNote("");
         setImage(null);
         setPhase({ name: "idle" });
-        toast("메모를 저장했어요 (데모)");
+        toast(dup ? "이미 저장된 영상이에요" : health?.mock ? "메모를 저장했어요 (예시)" : "메모를 저장했어요");
         router.push(memoHref(memo.id));
         return;
       }
@@ -189,7 +201,7 @@ export function Capture() {
       );
     } catch (e) {
       if ((e as Error).name === "AbortError") setPhase({ name: "idle" });
-      else setPhase({ name: "error", message: (e as Error).message });
+      else setPhase({ name: "error", message: DEMO ? friendlyError(e) : (e as Error).message });
     } finally {
       abortRef.current = null;
     }

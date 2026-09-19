@@ -3,6 +3,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { MemoContentSchema } from "./schema";
 import type { MemoContent } from "./types";
 import type { Transcript, VideoInfo } from "./youtube";
+import { getBrowserApiKey } from "./browser-key";
 
 export const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5";
 const EFFORT = process.env.CLAUDE_EFFORT as "low" | "medium" | "high" | "xhigh" | "max" | undefined;
@@ -13,9 +14,35 @@ export function hasApiKey(): boolean {
 }
 
 let _client: Anthropic | null = null;
+let _clientKey: string | null | undefined;
 function client(): Anthropic {
+  if (typeof window !== "undefined") {
+    // 브라우저 모드: 사용자가 넣은 키로 API 를 직접 부른다 (키는 이 기기에만 저장)
+    const key = getBrowserApiKey();
+    if (!key) throw new Error("Claude API 키가 연결되지 않았습니다.");
+    if (!_client || _clientKey !== key) {
+      _client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 2, timeout: 10 * 60 * 1000 });
+      _clientKey = key;
+    }
+    return _client;
+  }
   if (!_client) _client = new Anthropic({ maxRetries: 2, timeout: 10 * 60 * 1000 });
   return _client;
+}
+
+/** 키가 유효한지 가벼운 요청으로 확인한다 (브라우저 모드 연결 시) */
+export async function testApiKey(key: string): Promise<{ ok: true; model: string } | { ok: false; message: string }> {
+  try {
+    const c = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 0, timeout: 20_000 });
+    const info = await c.models.retrieve(MODEL);
+    return { ok: true, model: info.id };
+  } catch (err) {
+    if (err instanceof Anthropic.AuthenticationError) return { ok: false, message: "키가 올바르지 않아요. 다시 확인해 주세요." };
+    if (err instanceof Anthropic.PermissionDeniedError) return { ok: false, message: "이 키로는 접근할 수 없어요 (권한 부족)." };
+    if (err instanceof Anthropic.NotFoundError) return { ok: false, message: `모델 ${MODEL} 을 찾을 수 없어요.` };
+    if (err instanceof Anthropic.APIConnectionError) return { ok: false, message: "Anthropic 서버에 연결하지 못했어요. 네트워크를 확인해 주세요." };
+    return { ok: false, message: (err as Error).message || "확인에 실패했어요." };
+  }
 }
 
 const SYSTEM = `당신은 사용자의 개인 메모장에 들어갈 '읽기 노트'를 쓰는 편집자다. 모든 출력은 한국어, 간결한 문어체(~다)로 쓴다.

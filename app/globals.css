@@ -898,6 +898,61 @@ img {
   border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   background: transparent;
 }
+.banner.ok {
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+  color: var(--ok);
+}
+.banner.ok .btn {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+}
+.banner-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+  align-items: center;
+}
+.banner .btn.primary {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.connect {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.connect-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.connect-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  background: var(--bg-elev);
+  color: var(--ink);
+  font-size: 15px;
+  outline: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.connect-error {
+  color: var(--danger);
+  font-size: 13px;
+}
+.connect-help {
+  font-size: 12.5px;
+  color: var(--accent-ink);
+  opacity: 0.9;
+}
+.connect-help a {
+  text-decoration: underline;
+}
 .banner code {
   background: rgba(0, 0, 0, 0.06);
   padding: 1px 6px;

@@ -3,6 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { CategoryId, Memo, MemoKind } from "@/lib/types";
 import { DEMO, demoStore } from "@/lib/demo";
+import { isBrowserConnected, KEY_EVENT } from "@/lib/browser-key";
+import { MODEL } from "@/lib/claude";
 
 interface Health {
   apiKey: boolean;
@@ -57,8 +59,10 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void refresh();
     if (DEMO) {
-      setHealth({ apiKey: true, mock: true, model: "demo" });
-      return;
+      const update = () => setHealth(isBrowserConnected() ? { apiKey: true, mock: false, model: MODEL } : { apiKey: true, mock: true, model: "demo" });
+      update();
+      window.addEventListener(KEY_EVENT, update);
+      return () => window.removeEventListener(KEY_EVENT, update);
     }
     fetch("/api/health")
       .then((r) => r.json())

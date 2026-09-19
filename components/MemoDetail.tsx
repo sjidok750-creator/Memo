@@ -9,6 +9,7 @@ import { renderInline, renderRich } from "@/lib/richtext";
 import type { CategoryId, Memo } from "@/lib/types";
 import { DEMO, demoCapture, demoStore, imageSrc } from "@/lib/demo";
 import { captureStream } from "@/lib/capture-client";
+import { friendlyError } from "@/lib/errors";
 import { KindIcon } from "./MemoCard";
 import { useMemos } from "./MemoProvider";
 import { IconArrowLeft, IconCheck, IconCopy, IconEdit, IconLink, IconPlay, IconRefresh, IconTrash, IconX } from "./Icons";
@@ -113,7 +114,7 @@ export function MemoDetail({ id }: { id: string }) {
       }
       toast("다시 요약했어요");
     } catch (e) {
-      if ((e as Error).name !== "AbortError") toast((e as Error).message);
+      if ((e as Error).name !== "AbortError") toast(DEMO ? friendlyError(e) : (e as Error).message);
     } finally {
       setRedo(null);
       redoAbort.current = null;

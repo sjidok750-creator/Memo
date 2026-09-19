@@ -12,9 +12,15 @@
 - `lib/capture.ts` 입력 종류별 파이프라인 (`replace` 로 기존 메모 다시 요약)
 - `lib/youtube.ts` 영상 ID 파싱, 자막 수집 (watch 페이지 → InnerTube)
 - `lib/store.ts` `data/memos.json` + `data/uploads/` 파일 저장소
-- `lib/demo.ts` 서버 없는 데모 모드 (localStorage), `memoHref`/`imageSrc` 로 경로 분기
+- `lib/demo.ts` 서버 없는 정적 모드 (localStorage 저장소, 예시 메모), `memoHref`/`imageSrc` 로 경로 분기
+- `lib/browser-key.ts` + `lib/capture-browser.ts` 브라우저 모드: 사용자 키로 Claude 를 직접 호출 (`dangerouslyAllowBrowser`), 유튜브는 자막 없이 웹 도구로 조사
+- `components/Connect.tsx` 키 연결 패널 (정적 빌드에서만 렌더)
 - `lib/richtext.tsx` `**강조**` → 굵게+밑줄+Claude 색 (`.hl`)
 - `app/api/capture` NDJSON 진행 스트림, `app/api/backup` 내보내기/가져오기
+
+## 테스트 방법
+- 서버 모드: `MEMO_MOCK=1 MEMO_DATA_DIR=<임시폴더> npx next dev -p <포트>` 후 Playwright 로 흐름 확인
+- 브라우저 모드: `npm run build:demo` 결과를 정적 서버로 띄우고, Playwright `page.route("https://api.anthropic.com/**")` 로 SSE 응답을 흉내내 확인 (실제 키 없이 요청 형태 검증). messages 요청 URL 은 `/v1/messages?beta=true` 다.
 
 ## 규칙
 - 요약 본문의 강조는 `**...**` 하나만 쓴다. 다른 마크다운은 렌더러가 지원하지 않는다.
