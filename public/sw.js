@@ -1,5 +1,5 @@
-/* Gist service worker · build 20260919214343 */
-const VERSION = "20260919214343";
+/* Gist service worker · build 20260919215228 */
+const VERSION = "20260919215228";
 const CACHE = "gist-" + VERSION;
 
 self.addEventListener("install", () => {

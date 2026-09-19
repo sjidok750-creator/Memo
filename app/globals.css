@@ -2053,12 +2053,30 @@ h1.editable:hover .edit-hint {
   .callout {
     font-size: 18px;
   }
+  /* 검색칸과 종류 필터가 한 줄을 나눠 쓰면 검색칸이 밀려 안내 문구가 한 글자만
+     남는다 (영문 "Search title, content, tags" → "S"). 줄을 나눠 준다. */
   .toolbar-right {
     width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
   .search {
-    flex: 1;
+    flex: none;
+    width: 100%;
     min-width: 0;
+  }
+  /* 종류가 늘어 폭이 모자라면 밀어서 본다 */
+  .seg {
+    overflow-x: auto;
+    scrollbar-width: none;
+    justify-content: flex-start;
+  }
+  .seg::-webkit-scrollbar {
+    display: none;
+  }
+  .seg button {
+    flex: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
