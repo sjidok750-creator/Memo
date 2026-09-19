@@ -277,7 +277,7 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (e) {
           if ((e as Error).name !== "AbortError") {
-            const message = DEMO ? friendlyError(e) : (e as Error).message;
+            const message = DEMO ? friendlyError(e, req.lang ?? "ko") : (e as Error).message;
             if (replace) toast(message);
             else setJobError({ message, req, label });
           }
