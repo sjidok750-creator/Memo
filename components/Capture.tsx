@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { detectInput } from "@/lib/detect";
 import { fileToDataUrl } from "@/lib/image-client";
-import { DEMO } from "@/lib/demo";
+import { DEMO, memoHref } from "@/lib/demo";
+import { useRouter } from "next/navigation";
+import { buildClaudePrompt, claudeNewUrl, clearPendingImport, looksLikeClaudeReply, parseClaudeReply, readPendingImport, savePendingImport } from "@/lib/claude-app";
+import { parseYouTubeId } from "@/lib/youtube";
+import { IconSpark } from "./Icons";
 import type { CaptureRequest, MemoKind } from "@/lib/types";
 import { useMemos } from "./MemoProvider";
 import { IconArrowRight, IconBook, IconCheck, IconImage, IconPlay, IconX } from "./Icons";
@@ -24,7 +28,9 @@ const SLOT: Record<string, string> = {
 };
 
 export function Capture() {
-  const { health, lang, t, job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob } = useMemos();
+  const { health, lang, t, job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, importMemo, toast } = useMemos();
+  const router = useRouter();
+  const importing = useRef(false);
   const [text, setText] = useState("");
   const [note, setNote] = useState("");
   const [image, setImage] = useState<{ dataUrl: string; name: string } | null>(null);
@@ -106,6 +112,78 @@ export function Capture() {
   }, [acceptFile]);
 
   const canSubmit = image ? true : detected.kind === "youtube" || detected.kind === "book";
+  const canOpenClaude = image ? true : detected.kind === "youtube" || detected.kind === "book";
+  const apiReady = DEMO ? health?.mock === false : health?.apiKey === true;
+
+  /** Claude 앱에서 받아온 답이 붙여넣어지면 바로 저장 (사진이 붙어 있으면 메모 칸에 붙여넣게 된다) */
+  const replyText = image ? (looksLikeClaudeReply(note) ? note : null) : detected.kind === "import" ? text : null;
+  useEffect(() => {
+    if (!replyText || importing.current) return;
+    importing.current = true;
+    (async () => {
+      const parsed = parseClaudeReply(replyText);
+      if ("error" in parsed) {
+        setLocalError(t("app.invalid"));
+        importing.current = false;
+        return;
+      }
+      const pending = readPendingImport();
+      const kind = parsed.kind ?? pending?.kind ?? (parsed.content.meta.channel ? "youtube" : "book");
+      const source: import("@/lib/types").MemoSource = {};
+      if (kind === "youtube") {
+        const url = pending?.kind === "youtube" ? pending.input : undefined;
+        const id = url ? parseYouTubeId(url) : null;
+        if (url) source.url = url;
+        if (id) {
+          source.videoId = id;
+          source.thumbnail = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+        }
+        source.transcript = false;
+      } else if (kind === "book") {
+        source.query = pending?.kind === "book" ? pending.input : parsed.content.title;
+      } else {
+        const img = image?.dataUrl ?? (pending?.kind === "photo" ? pending.image : undefined);
+        if (img) source.image = img;
+        if (pending?.note) source.note = pending.note;
+      }
+      try {
+        const memo = await importMemo(parsed.content, kind, source);
+        clearPendingImport();
+        setText("");
+        setImage(null);
+        setNote("");
+        setLocalError(null);
+        toast(t("app.saved"));
+        router.push(memoHref(memo.id));
+      } catch {
+        setLocalError(t("detail.saveFailed"));
+      } finally {
+        importing.current = false;
+      }
+    })();
+  }, [replyText, image, importMemo, router, t, toast]);
+
+  /** claude.ai 를 요청문과 함께 연다. 사진은 요청문을 복사해 주고 사용자가 첨부한다 */
+  const openClaude = async () => {
+    let req: CaptureRequest;
+    if (image) req = { kind: "photo", image: image.dataUrl, note: note.trim() || undefined, lang };
+    else if (detected.kind === "youtube") req = { kind: "youtube", input: text.trim(), lang };
+    else if (detected.kind === "book") req = { kind: "book", input: text.trim(), lang };
+    else return;
+    savePendingImport({ kind: req.kind, input: req.input, image: req.image, note: req.note, lang, at: Date.now() });
+    const prompt = buildClaudePrompt(req, lang);
+    if (req.kind === "photo") {
+      try {
+        await navigator.clipboard.writeText(prompt);
+        toast(t("app.photoCopied"));
+      } catch {
+        /* 클립보드 실패해도 창은 연다 */
+      }
+      window.open("https://claude.ai/new", "_blank", "noopener");
+      return;
+    }
+    window.open(claudeNewUrl(prompt), "_blank", "noopener");
+  };
 
   const submit = () => {
     if (busy || !canSubmit) return;
@@ -227,12 +305,18 @@ export function Capture() {
           ) : (
             <textarea ref={textRef} rows={1} placeholder={placeholder} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} onPaste={onPaste} aria-label={t("capture.placeholder")} />
           )}
-          <button className="btn primary" onClick={submit} disabled={!canSubmit || health?.apiKey === false}>
-            {t("capture.submit")} <IconArrowRight size={15} />
-          </button>
+          {apiReady ? (
+            <button className="btn primary" onClick={submit} disabled={!canSubmit}>
+              {t("capture.submit")} <IconArrowRight size={15} />
+            </button>
+          ) : (
+            <button className="btn primary" onClick={() => void openClaude()} disabled={!canOpenClaude}>
+              <IconSpark size={14} /> {t("app.button")}
+            </button>
+          )}
         </div>
         <div className="capture-meta">
-          <Detect kind={image ? "photo" : detected.kind} />
+          <Detect kind={replyText ? "import" : image ? "photo" : detected.kind} />
           <span className="kbd">
             <kbd>Enter</kbd> {t("capture.enterHint")}
           </span>
@@ -251,7 +335,17 @@ export function Capture() {
           <IconImage size={13} /> {touch ? t("capture.hintPhotoTouch") : t("capture.hintPhoto")}
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void acceptFile(e.target.files?.[0])} />
+        {apiReady ? (
+          <button className="hint claude" onClick={() => void openClaude()} disabled={!canOpenClaude}>
+            <IconSpark size={12} /> {t("app.button")}
+          </button>
+        ) : DEMO && health?.mock ? (
+          <button className="hint" onClick={submit} disabled={!canSubmit}>
+            {t("capture.demoSubmit")}
+          </button>
+        ) : null}
       </div>
+      <div className="app-hint">{t("app.hint")}</div>
 
       {error && (
         <div className="error-box" role="alert">
@@ -280,9 +374,15 @@ export function Capture() {
   );
 }
 
-function Detect({ kind }: { kind: "empty" | "youtube" | "book" | "unsupported-url" | "photo" }) {
+function Detect({ kind }: { kind: "empty" | "youtube" | "book" | "unsupported-url" | "photo" | "import" }) {
   const { t } = useMemos();
   switch (kind) {
+    case "import":
+      return (
+        <span className="detect on">
+          <IconSpark size={12} /> {t("app.detected")}
+        </span>
+      );
     case "photo":
       return (
         <span className="detect on">

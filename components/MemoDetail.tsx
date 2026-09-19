@@ -344,7 +344,7 @@ export function MemoDetail({ id }: { id: string }) {
           <i /> {t(`detail.conf.${memo.confidence}`)}
           {memo.kind === "youtube" && memo.source.transcript === false && ` · ${t("detail.noTranscript")}`}
         </span>
-        <span>{memo.model && memo.model !== "demo" ? `Claude ${memo.model}` : DEMO ? t("detail.example") : ""}</span>
+        <span>{memo.model === "claude-app" ? t("detail.viaApp") : memo.model && memo.model !== "demo" ? `Claude ${memo.model}` : DEMO ? t("detail.example") : ""}</span>
       </footer>
     </article>
   );

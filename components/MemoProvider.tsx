@@ -9,6 +9,7 @@ import { MODEL } from "@/lib/claude";
 import { detectLang, LANG_KEY, translate, type Lang } from "@/lib/i18n";
 import { captureStream } from "@/lib/capture-client";
 import { friendlyError } from "@/lib/errors";
+import type { MemoContent } from "@/lib/types";
 
 interface Health {
   apiKey: boolean;
@@ -57,6 +58,8 @@ interface Ctx {
   discardInterrupted: () => void;
   startJob: (req: CaptureRequest, label: string) => void;
   cancelJob: () => void;
+  /** Claude 앱에서 받아온 답을 메모로 저장 */
+  importMemo: (content: MemoContent, kind: MemoKind, source: Memo["source"]) => Promise<Memo>;
 }
 
 const MemoContext = createContext<Ctx | null>(null);
@@ -293,6 +296,21 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
   );
 
   const cancelJob = useCallback(() => jobAbort.current?.abort(), []);
+
+  const importMemo = useCallback(
+    async (content: MemoContent, kind: MemoKind, source: Memo["source"]) => {
+      const now = new Date().toISOString();
+      const memo: Memo = { ...content, id: `c-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind, createdAt: now, updatedAt: now, source, model: "claude-app" };
+      if (DEMO) demoStore.add(memo);
+      else {
+        const res = await fetch("/api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memos: [memo] }) });
+        if (!res.ok) throw new Error("save failed");
+      }
+      upsert(memo);
+      return memo;
+    },
+    [upsert],
+  );
   const clearJobError = useCallback(() => setJobError(null), []);
   const discardInterrupted = useCallback(() => {
     writePending(null);
@@ -302,9 +320,9 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<Ctx>(
     () => ({
       memos, loading, category, setCategory, kind, setKind, query, setQuery, health, refresh, upsert, remove, patch, toast, lang, setLang, t,
-      job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob,
+      job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, importMemo,
     }),
-    [memos, loading, category, kind, query, health, refresh, upsert, remove, patch, toast, lang, setLang, t, job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob],
+    [memos, loading, category, kind, query, health, refresh, upsert, remove, patch, toast, lang, setLang, t, job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, importMemo],
   );
 
   return (

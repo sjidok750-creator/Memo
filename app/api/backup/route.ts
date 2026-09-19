@@ -29,6 +29,17 @@ export async function GET() {
   });
 }
 
+/** 사진이 data URL 로 들어오면 importMemos 가 파일로 저장하도록 imageData 로 옮긴다 */
+function normalizeSource(src: unknown): Memo["source"] {
+  if (!src || typeof src !== "object") return {};
+  const s = { ...(src as Memo["source"] & { imageData?: string }) };
+  if (s.image && s.image.startsWith("data:")) {
+    s.imageData = s.image;
+    delete s.image;
+  }
+  return s;
+}
+
 /** 백업 JSON 을 받아 합친다 */
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as { memos?: unknown } | null;
@@ -44,7 +55,7 @@ export async function POST(req: NextRequest) {
       kind: raw.kind as Memo["kind"],
       createdAt: typeof raw.createdAt === "string" ? raw.createdAt : new Date().toISOString(),
       updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : new Date().toISOString(),
-      source: typeof raw.source === "object" && raw.source ? raw.source : {},
+      source: normalizeSource(raw.source),
       model: typeof raw.model === "string" ? raw.model : undefined,
       thoughts: typeof raw.thoughts === "string" ? raw.thoughts : undefined,
     });
