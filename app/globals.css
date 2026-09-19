@@ -1034,6 +1034,30 @@ img {
   font-size: 12px;
   color: var(--muted);
 }
+/*
+ * 한글은 낱말 중간에서 끊지 않는다.
+ * UI 언어를 영어·일본어로 바꾸면 <html lang> 이 바뀌면서 브라우저가 한글을
+ * 아무 데서나 끊어 "히가시노 게 / 이고 일대기" 처럼 보였다. 메모 내용은 UI 언어와
+ * 무관하게 한국어일 수 있으므로 내용을 보여 주는 곳에 모두 건다.
+ * (일본어처럼 띄어쓰기가 없는 글은 한 낱말이 되지만 overflow-wrap 이 받아 준다.)
+ */
+.cover,
+.card-title,
+.card-line,
+.card-note p,
+.article h1,
+.callout,
+.prose,
+.points li,
+.quote p,
+.quote .note,
+.source-line,
+.thoughts-box,
+.sheet-title {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
 .card-foot .tags {
   min-width: 0;
   overflow: hidden;

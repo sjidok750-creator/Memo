@@ -47,6 +47,7 @@
 - 모바일(≤900px)에서 가로 넘침이 생기면 안 된다. 검증은 스크린샷이 아니라 `document.documentElement.scrollWidth === innerWidth` 로.
 - **가로 넘침이 없어도 글자는 잘릴 수 있다.** 낱말 길이가 언어마다 달라(영어 "Summarize" 는 한국어 "요약" 의 두 배) 한국어로만 보면 못 찾는다. 세 언어 × 320·390·430px 에서 `scrollWidth > clientWidth` / `scrollHeight > clientHeight` 로 확인할 것 (밀어 보는 줄과 줄 수 제한을 건 곳은 뺀다). 빈 입력칸의 **안내 문구**는 이 방법으로 안 잡히므로 값에 넣어 보고 재야 한다.
 - 입력칸 높이는 `Capture` 의 `autoSize` 가 내용과 안내 문구에 맞춰 잡는다. 고정 높이로 되돌리지 말 것 — 언어마다 줄 수가 달라진다.
+- **UI 언어와 메모 언어는 다르다.** UI 를 영어로 바꾸면 `<html lang>` 이 en 이 되지만 메모는 그대로 한국어다. 메모 내용을 보여 주는 곳(`.cover`, `.card-title`, `.prose`, `.article h1` …)에는 `word-break: keep-all` + `overflow-wrap: break-word` 를 건다. body 의 `overflow-wrap: anywhere` 를 그대로 두면 keep-all 이 있어도 한글이 낱말 중간에서 끊긴다 ("히가시노 게 / 이고 일대기"). 검증은 한국어·일본어 메모를 넣고 UI 를 세 언어로 돌려 가며 줄바꿈 자리를 본다.
 - 버튼에 글자를 넣을 때는 좁은 화면(≤600px)에서 `.wide-only` 로 글자를 빼고 `.narrow-only` 아이콘만 남긴다. 긴 낱말이 입력칸 폭을 다 먹는다.
 - `MemoContentSchema.meta` 에 항목을 더할 때는 `EMPTY_META`(schema.ts)만 늘리면 된다. 받아들이는 쪽(백업 가져오기, Claude 답 파싱, 글귀)은 모두 이걸 깔고 덮어쓰므로 예전 백업이 검증에 걸리지 않는다. **직접 meta 를 적어 넣지 말 것.**
 - 새 `MemoKind` 를 더하면 `app/api/backup` 의 허용 목록도 같이 고쳐야 한다 (안 그러면 서버 모드에서 조용히 버려진다). 동기화 서버는 kind 를 검사하지 않으므로 워커 재배포는 필요 없다.
