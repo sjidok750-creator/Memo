@@ -384,7 +384,9 @@ img {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+  row-gap: 8px;
+  flex-wrap: wrap;
   min-height: 22px;
 }
 .capture-meta-right {
@@ -394,7 +396,8 @@ img {
   flex: none;
 }
 /* 요약 / 보관 고르기. 판별 결과를 그냥 알려 주는 대신 바꿀 수 있게 한다 */
-/* 좁은 화면에서만 / 넓은 화면에서만 보이는 글자 */
+/* 좁은 화면에서는 버튼 글자를 빼고 아이콘만 남긴다.
+   "Summarize" 처럼 긴 낱말이 입력칸 폭을 다 먹어 안내 문구가 잘리기 때문이다. */
 .narrow-only {
   display: none;
 }
@@ -403,7 +406,7 @@ img {
     display: none;
   }
   .narrow-only {
-    display: inline;
+    display: inline-flex;
   }
 }
 
@@ -1032,10 +1035,11 @@ img {
   color: var(--muted);
 }
 .card-foot .tags {
-  display: flex;
-  gap: 6px;
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
+  /* 언어에 따라 태그가 길어지면 잘리지 말고 … 로 (영어·일본어에서 생기던 문제) */
+  text-overflow: ellipsis;
 }
 .empty {
   text-align: center;
@@ -1996,7 +2000,7 @@ h1.editable:hover .edit-hint {
   }
   .capture-row > .btn.primary {
     flex: none;
-    padding: 9px 12px;
+    padding: 11px 14px;
     white-space: nowrap;
   }
   .capture textarea:not(.note) {

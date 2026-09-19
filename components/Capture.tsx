@@ -42,6 +42,22 @@ export function Capture() {
   const [now, setNow] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+
+  /**
+   * 입력칸 높이를 내용에 맞춘다. 비어 있을 때는 안내 문구를 잠깐 넣어 재 본다 —
+   * 언어마다 문구 길이가 달라 고정 높이로는 영어·일본어에서 글자가 잘린다.
+   */
+  const autoSize = useCallback(() => {
+    for (const el of [textRef.current, noteRef.current]) {
+      if (!el) continue;
+      const had = el.value;
+      if (!had) el.value = el.placeholder;
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+      if (!had) el.value = "";
+    }
+  }, []);
 
   const detected = useMemo(() => detectInput(text), [text]);
   const busy = Boolean(job && !job.replace);
@@ -56,6 +72,16 @@ export function Capture() {
   const mode: "summarize" | "keep" = linkOnly ? "summarize" : (pickedMode ?? (detected.kind === "note" ? "keep" : "summarize"));
   // 고를 여지가 있을 때만 토글을 보여 준다 (붙여넣은 Claude 답·주소는 할 일이 정해져 있다)
   const canChoose = detected.kind !== "import" && !linkOnly;
+
+  useEffect(() => {
+    window.addEventListener("resize", autoSize);
+    return () => window.removeEventListener("resize", autoSize);
+  }, [autoSize]);
+
+  // 내용·안내 문구가 바뀌면 (모드·언어 전환 포함) 다시 잰다
+  useEffect(() => {
+    autoSize();
+  }, [autoSize, text, note, image, mode, lang, busy]);
 
   useEffect(() => {
     // Claude 앱으로 보낸 뒤 돌아왔는지 (답을 기다리는 중)
@@ -360,25 +386,37 @@ export function Capture() {
               </div>
               <div className="attach-body">
                 <span className="attach-name">{image.name}</span>
-                <textarea className="note" rows={2} placeholder={placeholder} value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={onKey} onPaste={onPaste} autoFocus />
+                <textarea ref={noteRef} className="note" rows={2} placeholder={placeholder} value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={onKey} onPaste={onPaste} autoFocus />
               </div>
             </div>
           ) : (
             <textarea ref={textRef} rows={1} placeholder={placeholder} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} onPaste={onPaste} aria-label={t("capture.placeholder")} />
           )}
           {mode === "keep" ? (
-            <button className="btn primary" onClick={() => void keep()} disabled={!canKeep}>
-              <IconQuote size={14} /> {t("capture.keep")}
+            <button className="btn primary" onClick={() => void keep()} disabled={!canKeep} aria-label={t("capture.keep")} title={t("capture.keep")}>
+              <span className="wide-only">
+                <IconQuote size={14} />
+              </span>
+              <span className="wide-only">{t("capture.keep")}</span>
+              <span className="narrow-only">
+                <IconArrowRight size={17} />
+              </span>
             </button>
           ) : apiReady ? (
-            <button className="btn primary" onClick={submit} disabled={!canSubmit}>
-              {t("capture.submit")} <IconArrowRight size={15} />
+            <button className="btn primary" onClick={submit} disabled={!canSubmit} aria-label={t("capture.submit")} title={t("capture.submit")}>
+              <span className="wide-only">{t("capture.submit")}</span> <IconArrowRight size={16} />
             </button>
           ) : (
-            <button className="btn primary" onClick={() => void openClaude()} disabled={!canOpenClaude} title={t("app.button")}>
-              <IconSpark size={14} />
+            <button className="btn primary" onClick={() => void openClaude()} disabled={!canOpenClaude} aria-label={t("app.button")} title={t("app.button")}>
+              {/* 좁은 화면에서는 글자가 빠지므로, 무엇을 뜻하는지 한눈에 들어오는 화살표를 쓴다
+                  (이 버튼이 요약이라는 것은 바로 아래 토글이 말해 준다) */}
+              <span className="wide-only">
+                <IconSpark size={14} />
+              </span>
               <span className="wide-only">{t("app.button")}</span>
-              <span className="narrow-only">{t("capture.mode.summarize")}</span>
+              <span className="narrow-only">
+                <IconArrowRight size={17} />
+              </span>
             </button>
           )}
         </div>
