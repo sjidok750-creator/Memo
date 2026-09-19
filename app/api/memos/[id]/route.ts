@@ -21,6 +21,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const patch: Partial<Memo> = {};
   if (typeof body.title === "string" && body.title.trim()) patch.title = body.title.trim().slice(0, 200);
   if (typeof body.category === "string" && (CATEGORY_IDS as string[]).includes(body.category)) patch.category = body.category;
+  if (typeof body.thoughts === "string") patch.thoughts = body.thoughts.slice(0, 20000);
   if (Array.isArray(body.tags)) patch.tags = body.tags.filter((t): t is string => typeof t === "string").map((t) => t.trim()).filter(Boolean).slice(0, 12);
   if (!Object.keys(patch).length) return Response.json({ error: "no valid fields" }, { status: 400 });
   const memo = await updateMemo(id, patch);

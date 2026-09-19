@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
       updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : new Date().toISOString(),
       source: typeof raw.source === "object" && raw.source ? raw.source : {},
       model: typeof raw.model === "string" ? raw.model : undefined,
+      thoughts: typeof raw.thoughts === "string" ? raw.thoughts : undefined,
     });
   }
   const result = await importMemos(valid);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Memo } from "@/lib/types";
 import { categoryOf } from "@/lib/categories";
 import { stripMarks } from "@/lib/richtext";
@@ -12,12 +12,15 @@ import { IconDownload, IconSearch, IconUpload } from "./Icons";
 import { DEMO, demoStore } from "@/lib/demo";
 import { Connect } from "./Connect";
 import { LangSwitch } from "./LangSwitch";
+import { ActionSheet } from "./ActionSheet";
 
 const KINDS: (MemoKind | "all")[] = ["all", "youtube", "book", "photo"];
 
 export function Home() {
   const { memos, loading, category, kind, setKind, query, setQuery, health, refresh, toast, lang, t } = useMemos();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [sheet, setSheet] = useState<Memo | null>(null);
+  const sheetMemo = sheet ? (memos.find((m) => m.id === sheet.id) ?? null) : null;
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -25,7 +28,7 @@ export function Home() {
       if (category !== "all" && m.category !== category) return false;
       if (kind !== "all" && m.kind !== kind) return false;
       if (!q) return true;
-      const hay = [m.title, m.oneLiner, stripMarks(m.summary), m.tags.join(" "), m.meta.author ?? "", m.meta.channel ?? ""].join("\n").toLowerCase();
+      const hay = [m.title, m.oneLiner, stripMarks(m.summary), m.tags.join(" "), m.meta.author ?? "", m.meta.channel ?? "", m.thoughts ?? ""].join("\n").toLowerCase();
       return hay.includes(q);
     });
   }, [memos, category, kind, query]);
@@ -131,12 +134,16 @@ export function Home() {
           )}
         </div>
       ) : (
-        <div className="grid">
-          {visible.map((m, i) => (
-            <MemoCard key={m.id} memo={m} index={i} />
-          ))}
-        </div>
+        <>
+          <div className="grid">
+            {visible.map((m, i) => (
+              <MemoCard key={m.id} memo={m} index={i} onMenu={setSheet} />
+            ))}
+          </div>
+          <div className="grid-hint">{t("sheet.hint")}</div>
+        </>
       )}
+      {sheetMemo && <ActionSheet memo={sheetMemo} onClose={() => setSheet(null)} />}
 
       <div className="backup-row">
         <span>{t("backup.label")}</span>

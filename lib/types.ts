@@ -64,6 +64,8 @@ export interface Memo extends MemoContent {
   source: MemoSource;
   /** 어떤 모델이 요약했는지 (표시용) */
   model?: string;
+  /** 요약 아래에 사용자가 직접 적는 생각 */
+  thoughts?: string;
 }
 
 /** /api/capture 가 NDJSON으로 흘려보내는 이벤트 */

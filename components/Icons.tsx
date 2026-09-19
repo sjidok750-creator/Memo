@@ -131,3 +131,10 @@ export const BrandMark = ({ size = 32, id = "bm" }: { size?: number; id?: string
     <rect x="15" y="46" width="18" height="6" rx="3" fill="#fff" opacity="0.5" />
   </svg>
 );
+export const IconMore = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, p)} fill="currentColor" stroke="none">
+    <circle cx="5" cy="12" r="2" />
+    <circle cx="12" cy="12" r="2" />
+    <circle cx="19" cy="12" r="2" />
+  </svg>
+);

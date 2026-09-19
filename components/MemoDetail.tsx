@@ -7,22 +7,30 @@ import { CATEGORIES, categoryOf } from "@/lib/categories";
 import { formatDate, kindLabel, memoToMarkdown } from "@/lib/format";
 import { renderInline, renderRich } from "@/lib/richtext";
 import type { CategoryId, Memo } from "@/lib/types";
-import { DEMO, demoCapture, demoStore, imageSrc } from "@/lib/demo";
-import { captureStream } from "@/lib/capture-client";
-import { friendlyError } from "@/lib/errors";
+import { DEMO, demoStore, imageSrc } from "@/lib/demo";
 import { KindIcon } from "./MemoCard";
 import { useMemos } from "./MemoProvider";
 import { IconArrowLeft, IconCheck, IconCopy, IconEdit, IconLink, IconPlay, IconRefresh, IconTrash, IconX } from "./Icons";
 
 export function MemoDetail({ id }: { id: string }) {
   const router = useRouter();
-  const { memos, loading, upsert, remove, patch, toast, lang, t } = useMemos();
+  const { memos, loading, upsert, remove, patch, toast, lang, t, job, startJob, cancelJob } = useMemos();
   const [fetched, setFetched] = useState<Memo | null | undefined>(undefined);
   const memo = memos.find((m) => m.id === id) ?? fetched ?? null;
   const [editTitle, setEditTitle] = useState<string | null>(null);
   const [editTags, setEditTags] = useState<string | null>(null);
-  const [redo, setRedo] = useState<{ stage: string } | null>(null);
-  const redoAbort = useRef<AbortController | null>(null);
+  const redo = job && job.replace === id ? job : null;
+  const [thoughts, setThoughts] = useState<string | null>(null);
+  const [thoughtsState, setThoughtsState] = useState<"idle" | "saving" | "saved">("idle");
+  const thoughtsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const thoughtsRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    setThoughts(null);
+    setThoughtsState("idle");
+    setEditTitle(null);
+    setEditTags(null);
+  }, [id]);
 
   useEffect(() => {
     if (memos.some((m) => m.id === id)) return;
@@ -91,33 +99,20 @@ export function MemoDetail({ id }: { id: string }) {
     const ok = await patch(memo.id, { tags });
     toast(ok ? t("detail.tagsChanged") : t("detail.saveFailed"));
   };
-  const onRedo = async () => {
-    if (redo) return;
+  const onRedo = () => {
+    if (job) return;
     if (!window.confirm(t("detail.redoConfirm"))) return;
-    const ctrl = new AbortController();
-    redoAbort.current = ctrl;
-    setRedo({ stage: "" });
-    try {
-      if (DEMO) {
-        const updated = await demoCapture({ kind: memo.kind, replace: memo.id, lang }, (ev) => ev.type === "stage" && setRedo({ stage: ev.id }), ctrl.signal);
-        upsert(updated);
-      } else {
-        await captureStream(
-          { kind: memo.kind, replace: memo.id, lang },
-          (ev) => {
-            if (ev.type === "stage") setRedo({ stage: ev.id });
-            else if (ev.type === "done") upsert(ev.memo);
-          },
-          ctrl.signal,
-        );
-      }
-      toast(t("detail.redoDone"));
-    } catch (e) {
-      if ((e as Error).name !== "AbortError") toast(DEMO ? friendlyError(e) : (e as Error).message);
-    } finally {
-      setRedo(null);
-      redoAbort.current = null;
-    }
+    startJob({ kind: memo.kind, replace: memo.id, lang }, memo.title);
+  };
+  const onThoughts = (v: string) => {
+    setThoughts(v);
+    setThoughtsState("saving");
+    if (thoughtsTimer.current) clearTimeout(thoughtsTimer.current);
+    thoughtsTimer.current = setTimeout(async () => {
+      const ok = await patch(memo.id, { thoughts: v });
+      setThoughtsState(ok ? "saved" : "idle");
+      if (!ok) toast(t("detail.saveFailed"));
+    }, 700);
   };
   const onCategory = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const next = e.target.value as CategoryId;
@@ -181,7 +176,7 @@ export function MemoDetail({ id }: { id: string }) {
       {redo && (
         <div className="redo-bar" role="status">
           <span className="ring sm" /> {redo.stage ? t(`stage.${redo.stage}`) : t("detail.preparing")}…
-          <button className="btn ghost sm" onClick={() => redoAbort.current?.abort()}>
+          <button className="btn ghost sm" onClick={cancelJob}>
             {t("detail.cancel")}
           </button>
         </div>
@@ -322,6 +317,26 @@ export function MemoDetail({ id }: { id: string }) {
             </button>
           </div>
         )}
+      </section>
+
+      <section className="section thoughts">
+        <div className="section-label">
+          {t("thoughts.title")}
+          <span className="thoughts-state">{thoughtsState === "saving" ? t("thoughts.saving") : thoughtsState === "saved" ? t("thoughts.saved") : ""}</span>
+        </div>
+        <textarea
+          ref={thoughtsRef}
+          className="thoughts-box"
+          placeholder={t("thoughts.placeholder")}
+          value={thoughts ?? memo.thoughts ?? ""}
+          onChange={(e) => onThoughts(e.target.value)}
+          onInput={(e) => {
+            const el = e.currentTarget;
+            el.style.height = "auto";
+            el.style.height = `${Math.max(120, el.scrollHeight)}px`;
+          }}
+          rows={4}
+        />
       </section>
 
       <footer className="footnote">

@@ -15,6 +15,9 @@
 - `lib/demo.ts` 서버 없는 정적 모드 (localStorage 저장소, 예시 메모), `memoHref`/`imageSrc` 로 경로 분기
 - `lib/browser-key.ts` + `lib/capture-browser.ts` 브라우저 모드: 사용자 키로 Claude 를 직접 호출 (`dangerouslyAllowBrowser`), 유튜브는 자막 없이 웹 도구로 조사
 - `components/Connect.tsx` 키 연결 패널 (정적 빌드에서만 렌더)
+- 요약 작업은 `MemoProvider` 의 `startJob/cancelJob/job` 이 전역으로 돌린다. 화면을 옮겨도 살아 있고, 홈 밖에서는 `JobPill` 이 뜬다. 진행 중 요청은 localStorage `memo-pending-job` 에 저장해 두었다가 다음 실행 때 `interrupted` 로 복구를 제안한다. 요약 중에는 화면 wake lock 을 잡는다.
+- 카드(`MemoCard`)는 `<a>` 가 아니라 div 다 (iOS 링크 미리보기 회피). 꾹 누르기·우클릭·⋯ 으로 `ActionSheet` 가 열린다.
+- 메모의 `thoughts` 는 상세 화면 맨 아래 "내 생각" 칸, 700ms 디바운스 자동 저장.
 - `lib/richtext.tsx` `**강조**` → 굵게+밑줄+Claude 색 (`.hl`)
 - `lib/i18n.ts` UI 문자열 사전 (ko/en/ja). 컴포넌트는 `useMemos().t("key")` 로 읽는다. 분야 이름은 `CATEGORIES[].label[lang]`
 - `app/api/capture` NDJSON 진행 스트림, `app/api/backup` 내보내기/가져오기

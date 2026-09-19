@@ -34,6 +34,7 @@ export function memoToMarkdown(m: Memo, lang: Lang): string {
     lines.push(`## ${t(`detail.quotes.${m.kind}`)}`, "");
     for (const q of m.quotes) lines.push(`> ${stripMarks(q.text)}`, ...(q.note ? [`> — ${q.note}`] : []), "");
   }
+  if (m.thoughts?.trim()) lines.push(`## ${t("thoughts.title")}`, "", m.thoughts.trim(), "");
   if (m.tags.length) lines.push(m.tags.map((x) => `#${x}`).join(" "));
   return lines.join("\n");
 }
