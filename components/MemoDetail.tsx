@@ -11,6 +11,7 @@ import { DEMO, imageSrc } from "@/lib/demo";
 import { clientStore } from "@/lib/store-client";
 import { KindIcon } from "./MemoCard";
 import { useMemos } from "./MemoProvider";
+import { useBookCover } from "./useBookCover";
 import { IconArrowLeft, IconCheck, IconCopy, IconEdit, IconLink, IconPlay, IconRefresh, IconTrash, IconX } from "./Icons";
 
 export function MemoDetail({ id }: { id: string }) {
@@ -18,6 +19,7 @@ export function MemoDetail({ id }: { id: string }) {
   const { memos, loading, upsert, remove, patch, toast, lang, t, job, startJob, cancelJob } = useMemos();
   const [fetched, setFetched] = useState<Memo | null | undefined>(undefined);
   const memo = memos.find((m) => m.id === id) ?? fetched ?? null;
+  const cover = useBookCover(memo);
   const [editTitle, setEditTitle] = useState<string | null>(null);
   const [editTags, setEditTags] = useState<string | null>(null);
   const redo = job && job.replace === id ? job : null;
@@ -243,6 +245,12 @@ export function MemoDetail({ id }: { id: string }) {
       {memo.kind === "photo" && memo.source.image && (
         <div className="hero photo">
           <img src={imageSrc(memo.source.image)} alt={memo.title} />
+        </div>
+      )}
+      {memo.kind === "book" && cover && (
+        <div className="hero book">
+          <img className="cover-blur" src={cover.src} alt="" aria-hidden />
+          <img className="cover-img" src={cover.src} alt={t("card.cover")} onLoad={cover.onLoad} onError={cover.onError} />
         </div>
       )}
 

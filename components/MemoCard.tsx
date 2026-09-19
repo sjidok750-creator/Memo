@@ -8,6 +8,7 @@ import type { Memo } from "@/lib/types";
 import { imageSrc, memoHref } from "@/lib/demo";
 import { IconBook, IconImage, IconMore, IconPlay } from "./Icons";
 import { useMemos } from "./MemoProvider";
+import { useBookCover } from "./useBookCover";
 
 export function KindIcon({ kind, size = 13 }: { kind: Memo["kind"]; size?: number }) {
   if (kind === "youtube") return <IconPlay size={size} />;
@@ -24,6 +25,7 @@ const HOLD_MS = 450;
 export function MemoCard({ memo, index = 0, onMenu }: { memo: Memo; index?: number; onMenu: (memo: Memo) => void }) {
   const { lang, t } = useMemos();
   const router = useRouter();
+  const cover = useBookCover(memo);
   const cat = categoryOf(memo.category);
   const c = { "--c": `light-dark(${cat.color}, ${cat.dark})` } as React.CSSProperties;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,9 +111,27 @@ export function MemoCard({ memo, index = 0, onMenu }: { memo: Memo; index?: numb
       )}
       {memo.kind === "book" && (
         <div className="card-media card-book" style={c}>
+          {/* 실제 표지를 찾는 동안에도 빈 칸이 보이지 않게 글자 표지를 깔아 둔다 */}
           <div className="cover" style={c}>
             {memo.title}
           </div>
+          {cover && (
+            <div className="cover-real">
+              <img className="cover-blur" src={cover.src} alt="" aria-hidden loading="lazy" draggable={false} />
+              <img
+                className="cover-img"
+                src={cover.src}
+                alt={t("card.cover")}
+                loading="lazy"
+                draggable={false}
+                onLoad={(e) => {
+                  e.currentTarget.parentElement?.classList.add("shown");
+                  cover.onLoad();
+                }}
+                onError={cover.onError}
+              />
+            </div>
+          )}
         </div>
       )}
       <div className="card-body">

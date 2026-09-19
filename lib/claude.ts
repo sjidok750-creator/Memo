@@ -282,7 +282,7 @@ export async function summarizeBook(query: string, signal?: AbortSignal, lang: L
   onStage?.("search");
   const notes = await runResearch(
     `책 "${query}" 에 대해 조사한다.
-1) web_search 로 책을 정확히 특정한다: 정식 제목, 저자, 출판사, 출간 연도 (번역서면 원제도). 같은 제목이 여럿이면 가장 널리 알려진 책. 검색은 꼭 필요한 만큼만, 최대 4회.
+1) web_search 로 책을 정확히 특정한다: 정식 제목, 저자, 출판사, 출간 연도, ISBN (번역서면 원제도). 같은 제목이 여럿이면 가장 널리 알려진 판본. 검색은 꼭 필요한 만큼만, 최대 4회.
 2) 책의 핵심 주장·구조·중요 내용을 구체적으로 정리한다. 이미 잘 아는 책이면 아는 내용을 충분히 쓰고, 검색은 확인용으로만 쓴다.
 3) 명대사·명문장을 5~10개 모은다. 검색 결과나 확실한 기억으로 확인되는 문장만, 원문에 충실하게. 번역서는 통용되는 번역을 우선하고 원문(외국어)을 알면 함께 적는다. 각 문장에 출처(장·인물 등)를 짧게 붙인다.
 4) 책을 특정하지 못했으면 그렇다고 분명히 적는다.
@@ -301,6 +301,7 @@ ${notes}
 
 지시
 - title 은 책의 정식 제목만 (저자는 meta.author, 출판사·연도는 meta.publisher·meta.year).
+- meta.isbn 에 메모에서 확인된 ISBN 을 하이픈 없이 넣는다 (13자리 우선). 확실하지 않으면 null.
 - summary 2~5문단, keyPoints 4~8개, 핵심 문장은 **강조**.
 - quotes 는 메모에 있는 명문장 중 5~10개. 인용문에는 강조 마크를 쓰지 않는다. 원문(외국어)이 있으면 note 에.
 - 메모에 책을 특정하지 못했다고 적혀 있으면 title 에 입력값을 그대로 쓰고 summary 첫 문단에 그 사실을 밝힌 뒤 confidence 를 low 로 둔다. 특정됐으면 confidence 는 medium (내용을 잘 아는 유명한 책이면 high).`;

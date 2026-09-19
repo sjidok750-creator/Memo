@@ -27,6 +27,7 @@ export const MemoContentSchema = z.object({
     year: z.string().nullable().describe("출간·게시 연도. 모르면 null"),
     channel: z.string().nullable().describe("유튜브 채널명. 해당 없으면 null"),
     duration: z.string().nullable().describe("영상 길이 등. 해당 없으면 null"),
+    isbn: z.string().nullable().describe("책의 ISBN (13자리 우선, 하이픈 없이). 표지를 찾는 데 쓴다. 책이 아니거나 확실하지 않으면 null"),
   }),
   confidence: z
     .enum(["high", "medium", "low"])

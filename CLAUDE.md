@@ -25,6 +25,7 @@
 - `worker/gist-worker.js` 동기화 서버 **단일 파일, 의존성 없음** (Cloudflare Workers + D1). MCP 는 SDK 없이 JSON-RPC 로 직접 처리한다 (`initialize`/`tools/list`/`tools/call`, 알림은 202, GET 은 405, protocolVersion 은 클라이언트 것을 그대로 돌려준다). `/mcp/<token>` 커넥터, `/api/<token>/...` 앱 API, `/s/<token>` 은 앱으로 보내는 링크. 토큰은 D1 `settings` 에 있고 첫 방문 때 한 번만 보여준다. D1 이 없으면 설정 안내 HTML 을 주되 커넥터는 붙을 수 있게 둔다. 폰에서 대시보드에 붙여넣어 배포하는 것이 기본 경로이므로 **의존성·빌드 단계를 추가하지 말 것**. 검증: `npx wrangler dev --port 8788` 후 공식 MCP 클라이언트(`@modelcontextprotocol/sdk` 의 Client + StreamableHTTPClientTransport)로 연결해 도구를 호출해 본다.
 - 정적 모드의 저장소는 `lib/store-client.ts` 하나만 쓴다: 동기화 서버가 연결돼 있으면(`lib/sync.ts`, localStorage `memo-sync`) 서버, 아니면 `demoStore`. 사진은 서버 모드에서 `img:<id>` 참조이고 `imageSrc` 가 주소로 바꾼다. 앱으로 돌아올 때(visibilitychange/focus) 서버 목록을 다시 읽는다.
 
+- 책 표지는 `lib/book-cover.ts` + `components/useBookCover.ts` 가 화면에서 찾는다. 저장된 메모는 건드리지 않고 기기별로 localStorage `memo-book-covers` 에 기억한다 (MCP 로 들어온 메모·예전 메모도 똑같이 뜬다). 찾는 곳은 Open Library 표지(ISBN) → Google Books → Open Library 검색 순이고, **주소가 실제로 열리는지는 `<img>` 의 onError/onLoad 가 판정한다** (fetch 로 확인하면 CORS 에 막힌다). 못 찾으면 지금까지 쓰던 글자 표지로 돌아간다. 닿지 못한 경우(네트워크·429·오프라인)를 "표지 없음" 으로 기억하면 안 된다 — 한 번 잘못 기억하면 일주일 동안 표지가 안 뜬다. 찾는 일은 카드가 사라져도 중간에 끊지 않는다.
 - `public/sw.js` 는 `scripts/build-sw.mjs` 가 빌드 시각을 박아 생성한다 (빌드에 연결됨). 화면(navigate)은 항상 network-first + `cache: "no-store"`, `/_next/static/` 만 캐시 우선, 외부 출처(동기화 서버·썸네일)는 가로채지 않는다. 아이폰 홈 화면 앱이 옛 화면에 갇히는 것을 막는 것이 목적이므로 이 성질을 깨지 말 것. `components/ServiceWorker.tsx` 는 업데이트일 때만 한 번 새로고침한다 (첫 claim 은 무시, 반복 금지).
 - 아이폰은 사파리와 홈 화면 앱의 저장소가 분리된다. 동기화 연결·API 키·언어는 기기(브라우저 컨텍스트)마다 따로 저장되므로, 연결 안내는 항상 "이 기기에서 한 번" 이라는 점을 드러낼 것.
 
@@ -38,4 +39,5 @@
 - 진행 단계는 서버가 stage `id` 만 의미 있게 보내고 클라이언트가 `stage.<id>` 키로 번역한다.
 - 요약 본문의 강조는 `**...**` 하나만 쓴다. 다른 마크다운은 렌더러가 지원하지 않는다.
 - 모바일(≤900px)에서 가로 넘침이 생기면 안 된다. 검증은 스크린샷이 아니라 `document.documentElement.scrollWidth === innerWidth` 로.
+- `.card-media img` 는 (클래스+요소라) 클래스 하나짜리 선택자보다 세다. 카드 안 이미지 규칙은 `.card-book .cover-img` 처럼 앞에 하나 더 붙일 것.
 - 새 API 라우트는 정적 데모 빌드에서 자동으로 제외되지만, 새 동적 페이지를 만들면 `scripts/build-demo.mjs` 의 목록에 추가해야 한다.

@@ -26,6 +26,8 @@ export interface MemoMeta {
   year: string | null;
   channel: string | null;
   duration: string | null;
+  /** 책의 ISBN. 표지를 정확히 찾는 데 쓴다 (모르면 null) */
+  isbn?: string | null;
 }
 
 /** Claude가 생성하는 요약 본문 (구조화 출력) */
