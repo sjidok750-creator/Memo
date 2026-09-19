@@ -145,11 +145,54 @@ img {
   border-right: 1px solid var(--line);
   background: var(--bg);
 }
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 4px 8px 16px;
+  min-width: 0;
+  flex: 1;
+}
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  flex: none;
+  margin-bottom: 12px;
+}
+.status-pill.on {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+  background: color-mix(in srgb, var(--ok) 10%, var(--bg-elev));
+}
+.status-pill.bad {
+  color: var(--danger);
+}
+.status-pill:disabled {
+  cursor: default;
+}
+.status-dot.idle {
+  background: var(--muted);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--muted) 18%, transparent);
+}
+.sheet-note {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  line-height: 1.55;
+  padding: 2px 4px 6px;
 }
 .brand svg {
   flex: none;
@@ -1704,6 +1747,9 @@ h1.editable:hover .edit-hint {
   }
   .brand {
     padding: 2px 4px 6px;
+  }
+  .status-pill {
+    margin-bottom: 4px;
   }
   .nav-title,
   .sidebar-foot {

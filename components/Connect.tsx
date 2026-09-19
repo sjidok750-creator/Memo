@@ -1,23 +1,45 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getBrowserApiKey, setBrowserApiKey } from "@/lib/browser-key";
+import { getBrowserApiKey, KEY_EVENT, setBrowserApiKey } from "@/lib/browser-key";
 import { MODEL, testApiKey } from "@/lib/claude";
 import { demoStore } from "@/lib/demo";
 import { useMemos } from "./MemoProvider";
 import { IconCheck, IconSpark, IconX } from "./Icons";
 
-/** 정적 배포(브라우저 모드)에서 Claude API 키를 연결하는 패널 */
-export function Connect() {
+/** 브라우저 모드의 연결 상태와 동작 (배너와 상단 표시가 함께 쓴다) */
+export function useClaudeConnection() {
   const { refresh, toast, memos, lang, t } = useMemos();
   const [connected, setConnected] = useState<boolean | null>(null);
+  const examples = memos.filter((m) => m.model === "demo").length;
+  useEffect(() => {
+    const update = () => setConnected(Boolean(getBrowserApiKey()));
+    update();
+    window.addEventListener(KEY_EVENT, update);
+    return () => window.removeEventListener(KEY_EVENT, update);
+  }, []);
+  const disconnect = () => {
+    if (!window.confirm(t("connect.disconnectConfirm"))) return false;
+    setBrowserApiKey(null);
+    toast(t("connect.disconnected"));
+    return true;
+  };
+  const clearExamples = () => {
+    const n = demoStore.clearExamples(lang);
+    void refresh();
+    toast(n ? t("connect.clearedN", { n }) : t("connect.nothingToClear"));
+  };
+  return { connected, examples, disconnect, clearExamples };
+}
+
+/** 정적 배포(브라우저 모드)에서 Claude API 키를 연결하는 패널. 연결되면 아무것도 그리지 않는다 (상단 표시가 대신한다). */
+export function Connect() {
+  const { toast, t } = useMemos();
+  const { connected } = useClaudeConnection();
   const [open, setOpen] = useState(false);
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const examples = memos.filter((m) => m.model === "demo").length;
-
-  useEffect(() => setConnected(Boolean(getBrowserApiKey())), []);
 
   const connect = async () => {
     const k = key.trim();
@@ -31,44 +53,12 @@ export function Connect() {
       return;
     }
     setBrowserApiKey(k);
-    setConnected(true);
     setOpen(false);
     setKey("");
     toast(t("connect.connected"));
   };
-  const disconnect = () => {
-    if (!window.confirm(t("connect.disconnectConfirm"))) return;
-    setBrowserApiKey(null);
-    setConnected(false);
-    toast(t("connect.disconnected"));
-  };
-  const clearExamples = () => {
-    const n = demoStore.clearExamples(lang);
-    void refresh();
-    toast(n ? t("connect.clearedN", { n }) : t("connect.nothingToClear"));
-  };
 
-  if (connected === null) return null;
-
-  if (connected) {
-    return (
-      <div className="banner ok">
-        <span>
-          <strong>{t("connect.connectedTitle")}</strong> · {t("connect.connectedBody", { model: MODEL })}
-        </span>
-        <span className="banner-actions">
-          {examples > 0 && (
-            <button className="btn sm" onClick={clearExamples}>
-              {t("connect.clearExamples")}
-            </button>
-          )}
-          <button className="btn sm ghost" onClick={disconnect}>
-            {t("connect.disconnect")}
-          </button>
-        </span>
-      </div>
-    );
-  }
+  if (connected === null || connected) return null;
 
   const help = t("connect.help", { link: "__LINK__" }).split("__LINK__");
 

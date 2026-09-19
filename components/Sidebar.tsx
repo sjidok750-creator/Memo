@@ -4,8 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CATEGORIES } from "@/lib/categories";
 import type { CategoryId } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMemos } from "./MemoProvider";
-import { BrandMark } from "./Icons";
+import { BrandMark, IconX } from "./Icons";
+import { DEMO } from "@/lib/demo";
+import { MODEL } from "@/lib/claude";
+import { useClaudeConnection } from "./Connect";
 
 export function Sidebar() {
   const { memos, category, setCategory, health, lang, t } = useMemos();
@@ -24,6 +29,7 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
+      <div className="brand-row">
       <Link href="/" className="brand" onClick={() => setCategory("all")}>
         <BrandMark size={34} id="side" />
         <span>
@@ -31,6 +37,8 @@ export function Sidebar() {
           <div className="brand-sub">{t("brand.tagline")}</div>
         </span>
       </Link>
+      <StatusPill />
+      </div>
 
       <div className="nav-title">{t("nav.fields")}</div>
       <nav className="nav" aria-label={t("nav.fields")}>
@@ -56,21 +64,82 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="sidebar-foot">
-        {health === null ? (
-          <span>{t("status.checking")}</span>
-        ) : health.apiKey ? (
-          <>
-            <span className="status-dot" />
-            <span>{health.model === "demo" ? t("status.demo") : health.mock ? t("status.mock") : t("status.connected", { model: health.model })}</span>
-          </>
-        ) : (
-          <>
-            <span className="status-dot bad" />
-            <span>{t("status.needKey")}</span>
-          </>
-        )}
-      </div>
     </aside>
+  );
+}
+
+/** 맨 위 이름 옆의 연결 상태. 누르면 연결 해제·예시 메모 지우기 메뉴 */
+function StatusPill() {
+  const { health, t } = useMemos();
+  const conn = useClaudeConnection();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+  if (health === null) return null;
+
+  const connected = DEMO ? conn.connected === true : health.apiKey && !health.mock;
+  const label = DEMO
+    ? connected
+      ? t("status.short.connected")
+      : t("status.short.demo")
+    : health.apiKey
+      ? health.mock
+        ? t("status.short.mock")
+        : t("status.short.connected")
+      : t("status.short.needKey");
+  const bad = !DEMO && !health.apiKey;
+  const canMenu = DEMO && connected;
+
+  return (
+    <>
+      <button className={`status-pill ${connected ? "on" : ""} ${bad ? "bad" : ""}`} onClick={() => canMenu && setOpen(true)} disabled={!canMenu} title={connected ? `Claude · ${MODEL}` : undefined} aria-label={t("status.menu")}>
+        <span className={`status-dot ${bad ? "bad" : ""} ${!connected && !bad ? "idle" : ""}`} />
+        {label}
+      </button>
+      {open &&
+        createPortal(
+        <div className="sheet-backdrop" onClick={() => setOpen(false)} role="presentation">
+          <div className="sheet" role="dialog" aria-modal="true" aria-label={t("status.menu")} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-head">
+              <span className="status-dot" />
+              <strong className="sheet-title">
+                {t("connect.connectedTitle")} · {MODEL}
+              </strong>
+              <button className="btn ghost sm" onClick={() => setOpen(false)} aria-label={t("capture.close")}>
+                <IconX />
+              </button>
+            </div>
+            <div className="sheet-note">{t("connect.connectedBody", { model: MODEL })}</div>
+            <div className="sheet-actions">
+              {conn.examples > 0 && (
+                <button
+                  className="sheet-item"
+                  onClick={() => {
+                    conn.clearExamples();
+                    setOpen(false);
+                  }}
+                >
+                  {t("connect.clearExamples")}
+                </button>
+              )}
+              <button
+                className="sheet-item danger"
+                onClick={() => {
+                  if (conn.disconnect()) setOpen(false);
+                }}
+              >
+                {t("connect.disconnect")}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+        )}
+    </>
   );
 }
