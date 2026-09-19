@@ -2,10 +2,14 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { MemoProvider } from "@/components/MemoProvider";
 import { Sidebar } from "@/components/Sidebar";
+import { asset } from "@/lib/demo";
 
 export const metadata: Metadata = {
   title: { default: "나만의 메모장", template: "%s · 나만의 메모장" },
   description: "유튜브 링크, 책 제목, 사진을 넣으면 핵심이 강조된 요약 메모가 됩니다.",
+  manifest: asset("/manifest.webmanifest"),
+  appleWebApp: { capable: true, title: "메모장", statusBarStyle: "default" },
+  icons: { apple: asset("/icons/apple-touch-icon.png") },
 };
 
 export const viewport: Viewport = {

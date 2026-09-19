@@ -81,6 +81,28 @@ export const IconSpark = ({ size = 16, ...p }: P) => (
     <path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z" />
   </svg>
 );
+export const IconEdit = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, p)}>
+    <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17z" />
+    <path d="M13.5 6.5l3 3" />
+  </svg>
+);
+export const IconRefresh = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, p)}>
+    <path d="M20 12a8 8 0 1 1-2.3-5.7" />
+    <path d="M20 4v5h-5" />
+  </svg>
+);
+export const IconDownload = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, p)}>
+    <path d="M12 4v11M7 10l5 5 5-5M4 20h16" />
+  </svg>
+);
+export const IconUpload = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, p)}>
+    <path d="M12 15V4M7 9l5-5 5 5M4 20h16" />
+  </svg>
+);
 export const IconNote = ({ size = 18, ...p }: P) => (
   <svg {...base(size, p)} strokeWidth={2.2}>
     <path d="M6 3h9l4 4v14H6z" />

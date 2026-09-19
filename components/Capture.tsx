@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { detectInput } from "@/lib/detect";
 import { fileToDataUrl } from "@/lib/image-client";
 import { DEMO, demoCapture, memoHref } from "@/lib/demo";
-import type { CaptureEvent, CaptureRequest, MemoKind } from "@/lib/types";
+import { captureStream } from "@/lib/capture-client";
+import type { CaptureRequest, MemoKind } from "@/lib/types";
 import { useMemos } from "./MemoProvider";
 import { IconArrowRight, IconBook, IconCheck, IconImage, IconPlay, IconX } from "./Icons";
 
@@ -45,12 +46,17 @@ export function Capture() {
   const [drag, setDrag] = useState(false);
   const [phase, setPhase] = useState<Phase>({ name: "idle" });
   const [now, setNow] = useState(0);
+  const [touch, setTouch] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const detected = useMemo(() => detectInput(text), [text]);
   const busy = phase.name === "busy";
+
+  useEffect(() => {
+    setTouch(window.matchMedia("(pointer: coarse)").matches);
+  }, []);
 
   // 경과 시간 표시
   useEffect(() => {
@@ -156,30 +162,9 @@ export function Capture() {
         router.push(memoHref(memo.id));
         return;
       }
-      const res = await fetch("/api/capture", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(req),
-        signal: ctrl.signal,
-      });
-      if (!res.ok || !res.body) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error || `서버 오류 (${res.status})`);
-      }
-      const reader = res.body.getReader();
-      const dec = new TextDecoder();
-      let buf = "";
-      let finished = false;
-      while (!finished) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        let nl: number;
-        while ((nl = buf.indexOf("\n")) >= 0) {
-          const line = buf.slice(0, nl).trim();
-          buf = buf.slice(nl + 1);
-          if (!line) continue;
-          const ev = JSON.parse(line) as CaptureEvent;
+      await captureStream(
+        req,
+        (ev) => {
           if (ev.type === "stage") {
             setPhase((p) =>
               p.name === "busy"
@@ -194,18 +179,14 @@ export function Capture() {
             setPhase({ name: "idle" });
             toast("메모를 저장했어요");
             router.push(memoHref(ev.memo.id));
-            finished = true;
           } else if (ev.type === "duplicate") {
             setPhase({ name: "idle" });
             toast("이미 저장된 영상이에요");
             router.push(memoHref(ev.memo.id));
-            finished = true;
-          } else if (ev.type === "error") {
-            throw new Error(ev.message);
           }
-        }
-      }
-      if (!finished) throw new Error("연결이 끊겼습니다. 다시 시도해 주세요.");
+        },
+        ctrl.signal,
+      );
     } catch (e) {
       if ((e as Error).name === "AbortError") setPhase({ name: "idle" });
       else setPhase({ name: "error", message: (e as Error).message });
@@ -338,7 +319,7 @@ export function Capture() {
           <IconBook size={13} /> 책 제목
         </button>
         <button className="hint" onClick={() => fileRef.current?.click()}>
-          <IconImage size={13} /> 사진 (끌어다 놓기 · 붙여넣기)
+          <IconImage size={13} /> {touch ? "사진 선택" : "사진 (끌어다 놓기 · 붙여넣기)"}
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void acceptFile(e.target.files?.[0])} />
       </div>
@@ -346,9 +327,16 @@ export function Capture() {
       {phase.name === "error" && (
         <div className="error-box" role="alert">
           <span>{phase.message}</span>
-          <button className="btn ghost sm" onClick={() => setPhase({ name: "idle" })} aria-label="닫기">
-            <IconX />
-          </button>
+          <span className="error-actions">
+            {canSubmit && (
+              <button className="btn sm" onClick={() => void submit()}>
+                다시 시도
+              </button>
+            )}
+            <button className="btn ghost sm" onClick={() => setPhase({ name: "idle" })} aria-label="닫기">
+              <IconX />
+            </button>
+          </span>
         </div>
       )}
       {drag && <div className="drop-overlay">사진을 여기에 놓으세요</div>}

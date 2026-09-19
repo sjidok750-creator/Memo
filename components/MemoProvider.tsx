@@ -95,13 +95,19 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
         if (memo) upsert(memo);
         return memo;
       }
+      // 먼저 화면에 반영하고, 실패하면 되돌린다
+      const prev = memos.find((m) => m.id === id);
+      if (prev) upsert({ ...prev, ...p });
       const res = await fetch(`/api/memos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        if (prev) upsert(prev);
+        return null;
+      }
       const { memo } = (await res.json()) as { memo: Memo };
       upsert(memo);
       return memo;
     },
-    [upsert],
+    [upsert, memos],
   );
 
   const value = useMemo<Ctx>(

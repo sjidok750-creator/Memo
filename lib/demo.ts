@@ -189,6 +189,31 @@ export const demoStore = {
   reset() {
     save(DEMO_MEMOS);
   },
+  exportAll(): string {
+    return JSON.stringify({ app: "memo", version: 1, exportedAt: new Date().toISOString(), memos: load() }, null, 2);
+  },
+  importAll(incoming: Memo[]): { added: number; skipped: number } {
+    const all = load();
+    const have = new Set(all.map((m) => m.id));
+    let added = 0;
+    let skipped = 0;
+    for (const m of incoming) {
+      if (!m || typeof m.id !== "string" || have.has(m.id)) {
+        skipped++;
+        continue;
+      }
+      const src = { ...m.source } as Memo["source"] & { imageData?: string };
+      if (src.imageData) {
+        src.image = src.imageData;
+        delete src.imageData;
+      }
+      all.push({ ...m, source: src });
+      have.add(m.id);
+      added++;
+    }
+    save(all);
+    return { added, skipped };
+  },
 };
 
 const sleep = (ms: number, signal?: AbortSignal) =>
@@ -226,6 +251,11 @@ export async function demoCapture(req: CaptureRequest, emit: (e: CaptureEvent) =
   }
   const template = DEMO_MEMOS.find((m) => m.kind === req.kind) ?? DEMO_MEMOS[0];
   const now = new Date().toISOString();
+  if (req.replace) {
+    const updated = demoStore.patch(req.replace, { summary: `(데모: ${new Date().toLocaleTimeString("ko-KR")} 에 다시 요약한 것처럼 보이지만 예시 문장이다.)\n\n${template.summary}`, keyPoints: template.keyPoints, quotes: template.quotes });
+    if (!updated) throw new Error("메모를 찾을 수 없습니다.");
+    return updated;
+  }
   const input = (req.input ?? "").trim();
   const memo: Memo = {
     ...template,

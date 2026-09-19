@@ -80,4 +80,6 @@ export interface CaptureRequest {
   note?: string;
   /** photo: data URL (image/jpeg|png|webp|gif) */
   image?: string;
+  /** 기존 메모를 다시 요약해 내용을 교체할 때 그 메모의 id */
+  replace?: string;
 }

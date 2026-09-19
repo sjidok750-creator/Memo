@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+import type { Memo } from "@/lib/types";
 import { categoryOf } from "@/lib/categories";
 import { stripMarks } from "@/lib/richtext";
 import type { MemoKind } from "@/lib/types";
 import { Capture } from "./Capture";
 import { MemoCard } from "./MemoCard";
 import { useMemos } from "./MemoProvider";
-import { IconSearch } from "./Icons";
+import { IconDownload, IconSearch, IconUpload } from "./Icons";
 import { DEMO, demoStore } from "@/lib/demo";
 
 const KINDS: { id: MemoKind | "all"; label: string }[] = [
@@ -30,6 +31,41 @@ export function Home() {
       return hay.includes(q);
     });
   }, [memos, category, kind, query]);
+
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const onExport = () => {
+    if (!DEMO) {
+      window.location.href = "/api/backup";
+      return;
+    }
+    const blob = new Blob([demoStore.exportAll()], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `memo-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  const onImport = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text()) as { memos?: Memo[] };
+      if (!Array.isArray(parsed.memos)) throw new Error("백업 파일 형식이 아니에요");
+      let result: { added: number; skipped: number };
+      if (DEMO) result = demoStore.importAll(parsed.memos);
+      else {
+        const res = await fetch("/api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed) });
+        if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || "가져오기에 실패했어요");
+        result = (await res.json()) as { added: number; skipped: number };
+      }
+      await refresh();
+      toast(`${result.added}개를 가져왔어요${result.skipped ? ` (이미 있는 ${result.skipped}개는 건너뜀)` : ""}`);
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
 
   const heading = category === "all" ? "전체 메모" : categoryOf(category).label;
   const hour = new Date().getHours();
@@ -115,6 +151,17 @@ export function Home() {
           ))}
         </div>
       )}
+
+      <div className="backup-row">
+        <span>백업</span>
+        <button className="link-btn" onClick={onExport} disabled={memos.length === 0}>
+          <IconDownload size={13} /> JSON으로 내보내기
+        </button>
+        <button className="link-btn" onClick={() => fileRef.current?.click()}>
+          <IconUpload size={13} /> 백업 파일 가져오기
+        </button>
+        <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => void onImport(e.target.files?.[0])} />
+      </div>
     </>
   );
 }

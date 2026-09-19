@@ -103,3 +103,46 @@ export async function saveImage(dataUrl: string): Promise<{ file: string; mediaT
   await fs.writeFile(path.join(UPLOAD_DIR, file), Buffer.from(base64, "base64"));
   return { file, mediaType, base64 };
 }
+
+/** 저장된 사진을 data URL 로 (백업용) */
+export async function readImageAsDataUrl(file: string): Promise<string | null> {
+  try {
+    const buf = await fs.readFile(path.join(UPLOAD_DIR, file));
+    const ext = file.split(".").pop()!.toLowerCase();
+    const mediaType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
+    return `data:${mediaType};base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+/** 백업 파일의 메모들을 합친다. 같은 id 가 이미 있으면 건너뛴다. 사진은 data URL 에서 복원한다. */
+export async function importMemos(incoming: Memo[]): Promise<{ added: number; skipped: number }> {
+  return locked(async () => {
+    const db = await readDb();
+    const have = new Set(db.memos.map((m) => m.id));
+    let added = 0;
+    let skipped = 0;
+    for (const raw of incoming) {
+      if (!raw || typeof raw.id !== "string" || have.has(raw.id)) {
+        skipped++;
+        continue;
+      }
+      const memo: Memo = { ...raw, source: { ...raw.source } };
+      const data = (memo.source as { imageData?: string }).imageData;
+      delete (memo.source as { imageData?: string }).imageData;
+      if (data) {
+        try {
+          memo.source.image = (await saveImage(data)).file;
+        } catch {
+          memo.source.image = undefined;
+        }
+      }
+      db.memos.push(memo);
+      have.add(memo.id);
+      added++;
+    }
+    await writeDb(db);
+    return { added, skipped };
+  });
+}

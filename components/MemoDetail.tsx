@@ -2,21 +2,26 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CATEGORIES, categoryOf } from "@/lib/categories";
 import { formatDate, KIND_LABEL, memoToMarkdown } from "@/lib/format";
 import { renderInline, renderRich } from "@/lib/richtext";
 import type { CategoryId, Memo } from "@/lib/types";
-import { DEMO, demoStore, imageSrc } from "@/lib/demo";
+import { DEMO, demoCapture, demoStore, imageSrc } from "@/lib/demo";
+import { captureStream } from "@/lib/capture-client";
 import { KindIcon } from "./MemoCard";
 import { useMemos } from "./MemoProvider";
-import { IconArrowLeft, IconCopy, IconLink, IconPlay, IconTrash } from "./Icons";
+import { IconArrowLeft, IconCheck, IconCopy, IconEdit, IconLink, IconPlay, IconRefresh, IconTrash, IconX } from "./Icons";
 
 export function MemoDetail({ id }: { id: string }) {
   const router = useRouter();
   const { memos, loading, upsert, remove, patch, toast } = useMemos();
   const [fetched, setFetched] = useState<Memo | null | undefined>(undefined);
   const memo = memos.find((m) => m.id === id) ?? fetched ?? null;
+  const [editTitle, setEditTitle] = useState<string | null>(null);
+  const [editTags, setEditTags] = useState<string | null>(null);
+  const [redo, setRedo] = useState<{ label: string } | null>(null);
+  const redoAbort = useRef<AbortController | null>(null);
 
   // 새로고침으로 바로 들어온 경우 목록보다 먼저 한 장만 가져온다
   useEffect(() => {
@@ -68,6 +73,52 @@ export function MemoDetail({ id }: { id: string }) {
       toast("복사에 실패했어요");
     }
   };
+  const saveTitle = async () => {
+    const t = (editTitle ?? "").trim();
+    setEditTitle(null);
+    if (!t || t === memo.title) return;
+    const ok = await patch(memo.id, { title: t });
+    toast(ok ? "제목을 바꿨어요" : "저장하지 못했어요");
+  };
+  const saveTags = async () => {
+    const tags = (editTags ?? "")
+      .split(/[,\s#]+/)
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .slice(0, 12);
+    setEditTags(null);
+    if (tags.join("|") === memo.tags.join("|")) return;
+    const ok = await patch(memo.id, { tags });
+    toast(ok ? "태그를 바꿨어요" : "저장하지 못했어요");
+  };
+  const onRedo = async () => {
+    if (redo) return;
+    if (!window.confirm("지금 요약을 버리고 처음부터 다시 요약할까요? 제목·태그·분야도 새로 정해져요.")) return;
+    const ctrl = new AbortController();
+    redoAbort.current = ctrl;
+    setRedo({ label: "준비 중" });
+    try {
+      if (DEMO) {
+        const updated = await demoCapture({ kind: memo.kind, replace: memo.id }, (ev) => ev.type === "stage" && setRedo({ label: ev.label }), ctrl.signal);
+        upsert(updated);
+      } else {
+        await captureStream(
+          { kind: memo.kind, replace: memo.id },
+          (ev) => {
+            if (ev.type === "stage") setRedo({ label: ev.label });
+            else if (ev.type === "done") upsert(ev.memo);
+          },
+          ctrl.signal,
+        );
+      }
+      toast("다시 요약했어요");
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") toast((e as Error).message);
+    } finally {
+      setRedo(null);
+      redoAbort.current = null;
+    }
+  };
   const onCategory = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const next = e.target.value as CategoryId;
     const ok = await patch(memo.id, { category: next });
@@ -100,6 +151,9 @@ export function MemoDetail({ id }: { id: string }) {
           <IconArrowLeft size={15} /> 목록으로
         </Link>
         <div className="article-actions">
+          <button className="btn ghost sm" onClick={onRedo} disabled={Boolean(redo)} title="같은 원본으로 요약을 새로 만듭니다">
+            <IconRefresh size={15} className={redo ? "spin" : undefined} /> 다시 요약
+          </button>
           <button className="btn ghost sm" onClick={onCopy}>
             <IconCopy size={15} /> 복사
           </button>
@@ -124,7 +178,40 @@ export function MemoDetail({ id }: { id: string }) {
         <time dateTime={memo.createdAt}>{formatDate(memo.createdAt)}</time>
       </div>
 
-      <h1>{memo.title}</h1>
+      {redo && (
+        <div className="redo-bar" role="status">
+          <span className="ring sm" /> {redo.label}…
+          <button className="btn ghost sm" onClick={() => redoAbort.current?.abort()}>
+            취소
+          </button>
+        </div>
+      )}
+
+      {editTitle === null ? (
+        <h1 className="editable" onClick={() => setEditTitle(memo.title)} title="눌러서 제목 고치기">
+          {memo.title}
+          <IconEdit size={16} className="edit-hint" />
+        </h1>
+      ) : (
+        <div className="title-edit">
+          <input
+            autoFocus
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) void saveTitle();
+              if (e.key === "Escape") setEditTitle(null);
+            }}
+            aria-label="제목"
+          />
+          <button className="btn sm primary" onClick={() => void saveTitle()}>
+            <IconCheck /> 저장
+          </button>
+          <button className="btn ghost sm" onClick={() => setEditTitle(null)} aria-label="취소">
+            <IconX />
+          </button>
+        </div>
+      )}
       {sourceBits.length > 0 && (
         <div className="source-line">
           {sourceBits.map((b, i) => (
@@ -195,18 +282,49 @@ export function MemoDetail({ id }: { id: string }) {
         </section>
       )}
 
-      {memo.tags.length > 0 && (
-        <section className="section">
-          <div className="section-label">태그</div>
+      <section className="section">
+        <div className="section-label">
+          태그
+          {editTags === null && (
+            <button className="link-btn" onClick={() => setEditTags(memo.tags.join(", "))}>
+              <IconEdit size={12} /> 편집
+            </button>
+          )}
+        </div>
+        {editTags === null ? (
           <div className="tags-row">
-            {memo.tags.map((t) => (
-              <span key={t} className="tag">
-                {t}
-              </span>
-            ))}
+            {memo.tags.length ? (
+              memo.tags.map((t) => (
+                <span key={t} className="tag">
+                  {t}
+                </span>
+              ))
+            ) : (
+              <span className="muted">태그가 없어요</span>
+            )}
           </div>
-        </section>
-      )}
+        ) : (
+          <div className="title-edit">
+            <input
+              autoFocus
+              value={editTags}
+              placeholder="쉼표로 구분 (예: 습관, 집중)"
+              onChange={(e) => setEditTags(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) void saveTags();
+                if (e.key === "Escape") setEditTags(null);
+              }}
+              aria-label="태그"
+            />
+            <button className="btn sm primary" onClick={() => void saveTags()}>
+              <IconCheck /> 저장
+            </button>
+            <button className="btn ghost sm" onClick={() => setEditTags(null)} aria-label="취소">
+              <IconX />
+            </button>
+          </div>
+        )}
+      </section>
 
       <footer className="footnote">
         <span className={`confidence ${memo.confidence}`}>

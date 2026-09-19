@@ -1182,6 +1182,109 @@ img {
   animation: rise 0.2s ease;
   z-index: 50;
 }
+.error-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex: none;
+}
+.ring.sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+.redo-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 4px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 14px;
+}
+.redo-bar .btn {
+  margin-left: auto;
+}
+h1.editable {
+  cursor: text;
+  position: relative;
+}
+h1.editable .edit-hint {
+  margin-left: 8px;
+  vertical-align: middle;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+h1.editable:hover .edit-hint {
+  opacity: 1;
+}
+.title-edit {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0;
+}
+.title-edit input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 700;
+  padding: 8px 12px;
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  background: var(--bg-elev);
+  outline: none;
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+.section .title-edit input {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+}
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.link-btn:hover {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+.link-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.section-label .link-btn {
+  margin-left: auto;
+}
+.muted {
+  color: var(--muted);
+  font-size: 14px;
+}
+.backup-row {
+  margin-top: 48px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--muted);
+}
 .notfound {
   text-align: center;
   padding: 80px 20px;
