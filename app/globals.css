@@ -1260,6 +1260,10 @@ img {
     flex-direction: column;
     align-items: stretch;
   }
+  .capture textarea:not(.note) {
+    min-height: 3.1em; /* 안내 문구가 두 줄로 접혀도 잘리지 않게 */
+    font-size: 16px; /* iOS 자동 확대 방지 */
+  }
   .btn.primary {
     justify-content: center;
   }
