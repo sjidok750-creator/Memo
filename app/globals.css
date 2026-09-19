@@ -423,7 +423,7 @@ img {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 6px 11px;
   border-radius: 999px;
   font-size: 12.5px;
   font-weight: 600;
@@ -1249,6 +1249,8 @@ img {
   text-decoration: underline;
   text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
   text-underline-offset: 3px;
+  /* 인라인 요소의 위아래 여백은 줄 높이를 바꾸지 않으면서 눌리는 넓이만 키운다 */
+  padding: 6px 2px;
 }
 .source-line .sep {
   color: var(--line-strong);
@@ -1599,7 +1601,9 @@ h1.editable:hover .edit-hint {
   font-weight: 500;
   letter-spacing: 0;
   color: var(--muted);
-  padding: 2px 6px;
+  /* 눌리는 넓이를 키우되 음수 여백으로 자리는 그대로 둔다 (폰에서 너무 작아 안 눌렸다) */
+  padding: 7px 8px;
+  margin: -5px -2px;
   border-radius: 6px;
 }
 .link-btn:hover {
@@ -2026,6 +2030,12 @@ h1.editable:hover .edit-hint {
     flex: none;
     padding: 11px 14px;
     white-space: nowrap;
+  }
+  /* 상세 화면 위쪽 버튼은 글자가 빠져 작아지므로 누르는 넓이를 확보한다 */
+  .article-actions .btn.sm {
+    min-width: 40px;
+    min-height: 38px;
+    justify-content: center;
   }
   .capture textarea:not(.note) {
     min-height: 2.2em; /* 안내 문구가 두 줄로 접혀도 잘리지 않게 */

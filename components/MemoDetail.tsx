@@ -155,15 +155,15 @@ export function MemoDetail({ id }: { id: string }) {
         </Link>
         <div className="article-actions">
           {memo.kind !== "note" && (
-            <button className="btn ghost sm" onClick={onRedo} disabled={Boolean(redo)} title={t("detail.redoTitle")}>
-              <IconRefresh size={15} className={redo ? "spin" : undefined} /> {t("detail.redo")}
+            <button className="btn ghost sm" onClick={onRedo} disabled={Boolean(redo)} title={t("detail.redoTitle")} aria-label={t("detail.redo")}>
+              <IconRefresh size={15} className={redo ? "spin" : undefined} /> <span className="wide-only">{t("detail.redo")}</span>
             </button>
           )}
-          <button className="btn ghost sm" onClick={onCopy}>
-            <IconCopy size={15} /> {t("detail.copy")}
+          <button className="btn ghost sm" onClick={onCopy} title={t("detail.copy")} aria-label={t("detail.copy")}>
+            <IconCopy size={15} /> <span className="wide-only">{t("detail.copy")}</span>
           </button>
-          <button className="btn ghost sm danger" onClick={onDelete}>
-            <IconTrash size={15} /> {t("detail.delete")}
+          <button className="btn ghost sm danger" onClick={onDelete} title={t("detail.delete")} aria-label={t("detail.delete")}>
+            <IconTrash size={15} /> <span className="wide-only">{t("detail.delete")}</span>
           </button>
         </div>
       </div>
