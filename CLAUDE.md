@@ -25,6 +25,9 @@
 - `worker/gist-worker.js` 동기화 서버 **단일 파일, 의존성 없음** (Cloudflare Workers + D1). MCP 는 SDK 없이 JSON-RPC 로 직접 처리한다 (`initialize`/`tools/list`/`tools/call`, 알림은 202, GET 은 405, protocolVersion 은 클라이언트 것을 그대로 돌려준다). `/mcp/<token>` 커넥터, `/api/<token>/...` 앱 API, `/s/<token>` 은 앱으로 보내는 링크. 토큰은 D1 `settings` 에 있고 첫 방문 때 한 번만 보여준다. D1 이 없으면 설정 안내 HTML 을 주되 커넥터는 붙을 수 있게 둔다. 폰에서 대시보드에 붙여넣어 배포하는 것이 기본 경로이므로 **의존성·빌드 단계를 추가하지 말 것**. 검증: `npx wrangler dev --port 8788` 후 공식 MCP 클라이언트(`@modelcontextprotocol/sdk` 의 Client + StreamableHTTPClientTransport)로 연결해 도구를 호출해 본다.
 - 정적 모드의 저장소는 `lib/store-client.ts` 하나만 쓴다: 동기화 서버가 연결돼 있으면(`lib/sync.ts`, localStorage `memo-sync`) 서버, 아니면 `demoStore`. 사진은 서버 모드에서 `img:<id>` 참조이고 `imageSrc` 가 주소로 바꾼다. 앱으로 돌아올 때(visibilitychange/focus) 서버 목록을 다시 읽는다.
 
+- `public/sw.js` 는 `scripts/build-sw.mjs` 가 빌드 시각을 박아 생성한다 (빌드에 연결됨). 화면(navigate)은 항상 network-first + `cache: "no-store"`, `/_next/static/` 만 캐시 우선, 외부 출처(동기화 서버·썸네일)는 가로채지 않는다. 아이폰 홈 화면 앱이 옛 화면에 갇히는 것을 막는 것이 목적이므로 이 성질을 깨지 말 것. `components/ServiceWorker.tsx` 는 업데이트일 때만 한 번 새로고침한다 (첫 claim 은 무시, 반복 금지).
+- 아이폰은 사파리와 홈 화면 앱의 저장소가 분리된다. 동기화 연결·API 키·언어는 기기(브라우저 컨텍스트)마다 따로 저장되므로, 연결 안내는 항상 "이 기기에서 한 번" 이라는 점을 드러낼 것.
+
 ## 테스트 방법
 - 서버 모드: `MEMO_MOCK=1 MEMO_DATA_DIR=<임시폴더> npx next dev -p <포트>` 후 Playwright 로 흐름 확인
 - 브라우저 모드: `npm run build:demo` 결과를 정적 서버로 띄우고, Playwright `page.route("https://api.anthropic.com/**")` 로 SSE 응답을 흉내내 확인 (실제 키 없이 요청 형태 검증). messages 요청 URL 은 `/v1/messages?beta=true` 다.

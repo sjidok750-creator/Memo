@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { MemoProvider } from "@/components/MemoProvider";
 import { Sidebar } from "@/components/Sidebar";
+import { ServiceWorker } from "@/components/ServiceWorker";
 import { asset } from "@/lib/demo";
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <MemoProvider>
+          <ServiceWorker />
           <div className="shell">
             <Sidebar />
             <main className="main">{children}</main>
