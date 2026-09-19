@@ -12,6 +12,8 @@ import { IconDownload, IconSearch, IconUpload } from "./Icons";
 import { DEMO, demoStore } from "@/lib/demo";
 import { Connect } from "./Connect";
 import { LangSwitch } from "./LangSwitch";
+import { useEffect } from "react";
+import { useReplyImport } from "./useReplyImport";
 import { ActionSheet } from "./ActionSheet";
 
 const KINDS: (MemoKind | "all")[] = ["all", "youtube", "book", "photo"];
@@ -20,6 +22,20 @@ export function Home() {
   const { memos, loading, category, kind, setKind, query, setQuery, health, refresh, toast, lang, t } = useMemos();
   const fileRef = useRef<HTMLInputElement>(null);
   const [sheet, setSheet] = useState<Memo | null>(null);
+  const importReply = useReplyImport();
+
+  // iOS 단축어 등에서 #import=<답> 또는 ?import=<답> 으로 열면 바로 저장한다
+  useEffect(() => {
+    const fromHash = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("import");
+    const fromQuery = new URLSearchParams(window.location.search).get("import");
+    const raw = fromHash ?? fromQuery;
+    if (!raw) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    void importReply(raw).then((ok) => {
+      if (!ok) toast(t("app.invalid"));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const sheetMemo = sheet ? (memos.find((m) => m.id === sheet.id) ?? null) : null;
 
   const visible = useMemo(() => {

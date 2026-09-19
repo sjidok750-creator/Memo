@@ -15,7 +15,7 @@
 - `lib/demo.ts` 서버 없는 정적 모드 (localStorage 저장소, 예시 메모), `memoHref`/`imageSrc` 로 경로 분기
 - `lib/browser-key.ts` + `lib/capture-browser.ts` 브라우저 모드: 사용자 키로 Claude 를 직접 호출 (`dangerouslyAllowBrowser`), 유튜브는 자막 없이 웹 도구로 조사
 - `components/Connect.tsx` 키 연결 패널 (정적 빌드에서만 렌더)
-- `lib/claude-app.ts` API 키 없는 경로: 요청문을 만들어 `claude.ai/new?q=` 로 열고, 사용자가 붙여넣은 Claude 답(JSON)을 `parseClaudeReply` 로 검증해 `importMemo` 로 저장. 붙여넣기 감지는 `detectInput` 의 `import` 종류(사진이 붙어 있으면 메모 칸을 본다). 열 때의 입력(URL·사진)은 `memo-pending-import` 에 두었다가 저장 시 합친다.
+- `lib/claude-app.ts` API 키 없는 경로: 요청문을 만들어 `claude.ai/new?q=` 로 열고, 사용자가 붙여넣은 Claude 답(JSON)을 `parseClaudeReply` 로 검증해 `importMemo` 로 저장. 붙여넣기 감지는 `detectInput` 의 `import` 종류(사진이 붙어 있으면 메모 칸을 본다). 열 때의 입력(URL·사진)은 `memo-pending-import` 에 두었다가 저장 시 합친다. 저장 로직은 `components/useReplyImport.ts` 하나이며 입력창 붙여넣기, "클립보드에서 가져오기" 버튼, 공유 주소 `#import=<답>`(iOS 단축어용, Home 에서 처리)가 함께 쓴다.
 - 요약 작업은 `MemoProvider` 의 `startJob/cancelJob/job` 이 전역으로 돌린다. 화면을 옮겨도 살아 있고, 홈 밖에서는 `JobPill` 이 뜬다. 진행 중 요청은 localStorage `memo-pending-job` 에 저장해 두었다가 다음 실행 때 `interrupted` 로 복구를 제안한다. 요약 중에는 화면 wake lock 을 잡는다.
 - 카드(`MemoCard`)는 `<a>` 가 아니라 div 다 (iOS 링크 미리보기 회피). 꾹 누르기·우클릭·⋯ 으로 `ActionSheet` 가 열린다.
 - 메모의 `thoughts` 는 상세 화면 맨 아래 "내 생각" 칸, 700ms 디바운스 자동 저장.

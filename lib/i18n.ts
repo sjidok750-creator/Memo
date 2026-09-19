@@ -206,6 +206,10 @@ const ko: Dict = {
   "app.invalid": "Claude 답의 형식을 알아볼 수 없어요. 답 끝의 JSON 코드 블록 전체를 복사해 다시 붙여넣어 주세요.",
   "capture.demoSubmit": "예시로 보기",
   "detail.viaApp": "Claude 앱에서 요약",
+  "app.awaiting": "Claude 앱에서 답을 받았나요? 복사한 뒤 여기서 한 번에 가져올 수 있어요.",
+  "app.pasteClipboard": "클립보드에서 가져오기",
+  "app.clipboardEmpty": "클립보드에 Claude 의 답이 없어요. 답의 코드 블록을 복사한 뒤 다시 눌러 주세요.",
+  "app.clipboardDenied": "클립보드를 읽을 수 없어요. 입력창을 길게 눌러 붙여넣어 주세요.",
   "md.oneLiner": "한 줄 정리",
   "lang.label": "언어",
 };
@@ -383,6 +387,10 @@ const en: Dict = {
   "app.invalid": "Couldn't read Claude's reply. Copy the whole JSON code block at the end of the reply and paste it again.",
   "capture.demoSubmit": "Show sample",
   "detail.viaApp": "Summarized in the Claude app",
+  "app.awaiting": "Got Claude's reply? Copy it, then bring it in with one tap.",
+  "app.pasteClipboard": "Paste from clipboard",
+  "app.clipboardEmpty": "No Claude reply on the clipboard. Copy the code block from the reply and try again.",
+  "app.clipboardDenied": "Couldn't read the clipboard. Press and hold the input to paste.",
   "md.oneLiner": "In one line",
   "lang.label": "Language",
 };
@@ -560,6 +568,10 @@ const ja: Dict = {
   "app.invalid": "Claudeの返答の形式を読み取れません。返答末尾のJSONコードブロック全体をコピーして貼り直してください。",
   "capture.demoSubmit": "サンプルを見る",
   "detail.viaApp": "Claudeアプリで要約",
+  "app.awaiting": "Claudeの返答は届きましたか？コピーしてから、ここで一度に取り込めます。",
+  "app.pasteClipboard": "クリップボードから取り込む",
+  "app.clipboardEmpty": "クリップボードにClaudeの返答がありません。返答のコードブロックをコピーしてもう一度押してください。",
+  "app.clipboardDenied": "クリップボードを読めません。入力欄を長押しして貼り付けてください。",
   "md.oneLiner": "ひとことで",
   "lang.label": "言語",
 };

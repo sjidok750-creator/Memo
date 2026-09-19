@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { detectInput } from "@/lib/detect";
 import { fileToDataUrl } from "@/lib/image-client";
-import { DEMO, memoHref } from "@/lib/demo";
-import { useRouter } from "next/navigation";
-import { buildClaudePrompt, claudeNewUrl, clearPendingImport, looksLikeClaudeReply, parseClaudeReply, readPendingImport, savePendingImport } from "@/lib/claude-app";
-import { parseYouTubeId } from "@/lib/youtube";
+import { DEMO } from "@/lib/demo";
+import { buildClaudePrompt, claudeNewUrl, clearPendingImport, looksLikeClaudeReply, readPendingImport, savePendingImport } from "@/lib/claude-app";
+import { useReplyImport } from "./useReplyImport";
+import { IconClipboard } from "./Icons";
 import { IconSpark } from "./Icons";
 import type { CaptureRequest, MemoKind } from "@/lib/types";
 import { useMemos } from "./MemoProvider";
@@ -28,9 +28,10 @@ const SLOT: Record<string, string> = {
 };
 
 export function Capture() {
-  const { health, lang, t, job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, importMemo, toast } = useMemos();
-  const router = useRouter();
+  const { health, lang, t, job, jobError, clearJobError, interrupted, discardInterrupted, startJob, cancelJob, toast } = useMemos();
+  const importReply = useReplyImport();
   const importing = useRef(false);
+  const [awaiting, setAwaiting] = useState(false);
   const [text, setText] = useState("");
   const [note, setNote] = useState("");
   const [image, setImage] = useState<{ dataUrl: string; name: string } | null>(null);
@@ -46,6 +47,15 @@ export function Capture() {
 
   useEffect(() => {
     setTouch(window.matchMedia("(pointer: coarse)").matches);
+    // Claude 앱으로 보낸 뒤 돌아왔는지 (답을 기다리는 중)
+    const check = () => setAwaiting(Boolean(readPendingImport()));
+    check();
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("focus", check);
+    return () => {
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("focus", check);
+    };
   }, []);
   useEffect(() => {
     if (!busy) return;
@@ -121,47 +131,36 @@ export function Capture() {
     if (!replyText || importing.current) return;
     importing.current = true;
     (async () => {
-      const parsed = parseClaudeReply(replyText);
-      if ("error" in parsed) {
-        setLocalError(t("app.invalid"));
-        importing.current = false;
-        return;
-      }
-      const pending = readPendingImport();
-      const kind = parsed.kind ?? pending?.kind ?? (parsed.content.meta.channel ? "youtube" : "book");
-      const source: import("@/lib/types").MemoSource = {};
-      if (kind === "youtube") {
-        const url = pending?.kind === "youtube" ? pending.input : undefined;
-        const id = url ? parseYouTubeId(url) : null;
-        if (url) source.url = url;
-        if (id) {
-          source.videoId = id;
-          source.thumbnail = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-        }
-        source.transcript = false;
-      } else if (kind === "book") {
-        source.query = pending?.kind === "book" ? pending.input : parsed.content.title;
-      } else {
-        const img = image?.dataUrl ?? (pending?.kind === "photo" ? pending.image : undefined);
-        if (img) source.image = img;
-        if (pending?.note) source.note = pending.note;
-      }
-      try {
-        const memo = await importMemo(parsed.content, kind, source);
-        clearPendingImport();
+      const ok = await importReply(replyText, image ? { image: image.dataUrl, note: undefined } : undefined);
+      if (ok) {
         setText("");
         setImage(null);
         setNote("");
         setLocalError(null);
-        toast(t("app.saved"));
-        router.push(memoHref(memo.id));
-      } catch {
-        setLocalError(t("detail.saveFailed"));
-      } finally {
-        importing.current = false;
-      }
+      } else setLocalError(t("app.invalid"));
+      importing.current = false;
     })();
-  }, [replyText, image, importMemo, router, t, toast]);
+  }, [replyText, image, importReply, t]);
+
+  /** 돌아왔을 때 한 번에: 클립보드의 Claude 답을 읽어 저장 */
+  const pasteFromClipboard = async () => {
+    try {
+      const clip = await navigator.clipboard.readText();
+      if (!looksLikeClaudeReply(clip)) {
+        toast(t("app.clipboardEmpty"));
+        return;
+      }
+      if (image) setNote(clip);
+      else setText(clip);
+    } catch {
+      toast(t("app.clipboardDenied"));
+    }
+  };
+
+  const clearPendingImportLocal = () => {
+    clearPendingImport();
+    setAwaiting(false);
+  };
 
   /** claude.ai 를 요청문과 함께 연다. 사진은 요청문을 복사해 주고 사용자가 첨부한다 */
   const openClaude = async () => {
@@ -171,6 +170,7 @@ export function Capture() {
     else if (detected.kind === "book") req = { kind: "book", input: text.trim(), lang };
     else return;
     savePendingImport({ kind: req.kind, input: req.input, image: req.image, note: req.note, lang, at: Date.now() });
+    setAwaiting(true);
     const prompt = buildClaudePrompt(req, lang);
     if (req.kind === "photo") {
       try {
@@ -276,6 +276,25 @@ export function Capture() {
             </button>
             <button className="btn sm ghost" onClick={discardInterrupted}>
               {t("job.discard")}
+            </button>
+          </span>
+        </div>
+      )}
+      {awaiting && !replyText && (
+        <div className="awaiting">
+          <span>{t("app.awaiting")}</span>
+          <span className="banner-actions">
+            <button className="btn sm primary" onClick={() => void pasteFromClipboard()}>
+              <IconClipboard size={14} /> {t("app.pasteClipboard")}
+            </button>
+            <button
+              className="btn sm ghost"
+              onClick={() => {
+                clearPendingImportLocal();
+              }}
+              aria-label={t("capture.close")}
+            >
+              <IconX />
             </button>
           </span>
         </div>

@@ -1694,6 +1694,21 @@ h1.editable:hover .edit-hint {
   margin-top: 2px;
 }
 
+/* Claude 앱 답 기다리는 중 */
+.awaiting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 14px;
+}
+
 /* 내 생각 */
 .thoughts-state {
   margin-left: auto;
