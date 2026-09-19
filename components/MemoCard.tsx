@@ -4,6 +4,7 @@ import Link from "next/link";
 import { categoryOf } from "@/lib/categories";
 import { formatDateShort, KIND_LABEL } from "@/lib/format";
 import type { Memo } from "@/lib/types";
+import { asset, imageSrc, memoHref } from "@/lib/demo";
 import { IconBook, IconImage, IconPlay } from "./Icons";
 
 export function KindIcon({ kind, size = 13 }: { kind: Memo["kind"]; size?: number }) {
@@ -17,10 +18,10 @@ export function MemoCard({ memo, index = 0 }: { memo: Memo; index?: number }) {
   const c = { "--c": `light-dark(${cat.color}, ${cat.dark})` } as React.CSSProperties;
 
   return (
-    <Link href={`/memo/${memo.id}`} className="card" style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}>
+    <Link href={memoHref(memo.id)} className="card" style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}>
       {memo.kind === "youtube" && memo.source.thumbnail && (
         <div className="card-media">
-          <img src={memo.source.thumbnail} alt="" loading="lazy" onError={(e) => e.currentTarget.classList.add("broken")} />
+          <img src={imageSrc(memo.source.thumbnail)} alt="" loading="lazy" onError={(e) => e.currentTarget.classList.add("broken")} />
           <div className="play">
             <span>
               <IconPlay size={18} />
@@ -30,7 +31,7 @@ export function MemoCard({ memo, index = 0 }: { memo: Memo; index?: number }) {
       )}
       {memo.kind === "photo" && memo.source.image && (
         <div className="card-media">
-          <img src={`/api/files/${memo.source.image}`} alt="" loading="lazy" />
+          <img src={imageSrc(memo.source.image)} alt="" loading="lazy" />
         </div>
       )}
       {memo.kind === "book" && (

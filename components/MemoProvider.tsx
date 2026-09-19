@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { CategoryId, Memo, MemoKind } from "@/lib/types";
+import { DEMO, demoStore } from "@/lib/demo";
 
 interface Health {
   apiKey: boolean;
@@ -39,6 +40,11 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async () => {
+    if (DEMO) {
+      setMemos(demoStore.list());
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch("/api/memos", { cache: "no-store" });
       const j = (await res.json()) as { memos: Memo[] };
@@ -50,6 +56,10 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     void refresh();
+    if (DEMO) {
+      setHealth({ apiKey: true, mock: true, model: "demo" });
+      return;
+    }
     fetch("/api/health")
       .then((r) => r.json())
       .then((h: Health) => setHealth(h))
@@ -73,12 +83,18 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    await fetch(`/api/memos/${id}`, { method: "DELETE" });
+    if (DEMO) demoStore.remove(id);
+    else await fetch(`/api/memos/${id}`, { method: "DELETE" });
     setMemos((prev) => prev.filter((m) => m.id !== id));
   }, []);
 
   const patch = useCallback(
     async (id: string, p: Partial<Memo>) => {
+      if (DEMO) {
+        const memo = demoStore.patch(id, p);
+        if (memo) upsert(memo);
+        return memo;
+      }
       const res = await fetch(`/api/memos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) });
       if (!res.ok) return null;
       const { memo } = (await res.json()) as { memo: Memo };

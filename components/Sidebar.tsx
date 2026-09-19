@@ -64,7 +64,7 @@ export function Sidebar() {
         ) : health.apiKey ? (
           <>
             <span className="status-dot" />
-            <span>Claude · {health.mock ? "예시 모드" : health.model}</span>
+            <span>{health.model === "demo" ? "미리보기 데모" : `Claude · ${health.mock ? "예시 모드" : health.model}`}</span>
           </>
         ) : (
           <>

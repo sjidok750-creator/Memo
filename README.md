@@ -62,3 +62,13 @@ npm run build      # 프로덕션 빌드
 npm run start      # 빌드 결과 실행
 npm run typecheck  # 타입 검사
 ```
+
+## 미리보기 데모 (GitHub Pages)
+
+서버 없이 화면만 보여주는 정적 데모를 만들 수 있습니다. 예시 메모가 채워져 있고, 입력하면 요약 과정을 흉내낸 뒤 예시 메모를 하나 추가합니다 (브라우저에만 저장).
+
+```bash
+DEMO_BASE_PATH=/Memo npm run build:demo   # out/ 에 정적 사이트 생성
+```
+
+`.github/workflows/pages.yml` 이 푸시할 때마다 이 데모를 GitHub Pages 에 올립니다. 저장소 Settings → Pages 에서 Source 가 **GitHub Actions** 로 되어 있어야 합니다. 주소는 `https://<계정>.github.io/<저장소 이름>/` 입니다.

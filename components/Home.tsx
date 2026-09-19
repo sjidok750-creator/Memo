@@ -8,6 +8,7 @@ import { Capture } from "./Capture";
 import { MemoCard } from "./MemoCard";
 import { useMemos } from "./MemoProvider";
 import { IconSearch } from "./Icons";
+import { DEMO, demoStore } from "@/lib/demo";
 
 const KINDS: { id: MemoKind | "all"; label: string }[] = [
   { id: "all", label: "전체" },
@@ -17,7 +18,7 @@ const KINDS: { id: MemoKind | "all"; label: string }[] = [
 ];
 
 export function Home() {
-  const { memos, loading, category, kind, setKind, query, setQuery, health } = useMemos();
+  const { memos, loading, category, kind, setKind, query, setQuery, health, refresh, toast } = useMemos();
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -41,6 +42,23 @@ export function Home() {
         <h1 className="home-title">오늘은 무엇을 기억해 둘까요?</h1>
       </header>
 
+      {DEMO && (
+        <div className="banner">
+          <span>
+            <strong>미리보기 데모</strong> · 화면과 흐름만 볼 수 있는 버전이에요. 요약은 예시 문장이고 메모는 이 브라우저에만 저장됩니다. 실제로 쓰려면 저장소를 내려받아 Claude API 키와 함께 로컬에서 실행하세요.
+          </span>
+          <button
+            className="btn sm"
+            onClick={() => {
+              demoStore.reset();
+              void refresh();
+              toast("예시 메모를 원래대로 되돌렸어요");
+            }}
+          >
+            초기화
+          </button>
+        </div>
+      )}
       {health && !health.apiKey && (
         <div className="banner">
           <span>

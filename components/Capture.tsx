@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { detectInput } from "@/lib/detect";
 import { fileToDataUrl } from "@/lib/image-client";
+import { DEMO, demoCapture, memoHref } from "@/lib/demo";
 import type { CaptureEvent, CaptureRequest, MemoKind } from "@/lib/types";
 import { useMemos } from "./MemoProvider";
 import { IconArrowRight, IconBook, IconCheck, IconImage, IconPlay, IconX } from "./Icons";
@@ -142,6 +143,19 @@ export function Capture() {
     setNow(Date.now());
 
     try {
+      if (DEMO) {
+        const memo = await demoCapture(req, (ev) => {
+          if (ev.type === "stage") setPhase((p) => (p.name === "busy" ? { ...p, current: ev.id } : p));
+        }, ctrl.signal);
+        upsert(memo);
+        setText("");
+        setNote("");
+        setImage(null);
+        setPhase({ name: "idle" });
+        toast("메모를 저장했어요 (데모)");
+        router.push(memoHref(memo.id));
+        return;
+      }
       const res = await fetch("/api/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -179,12 +193,12 @@ export function Capture() {
             setImage(null);
             setPhase({ name: "idle" });
             toast("메모를 저장했어요");
-            router.push(`/memo/${ev.memo.id}`);
+            router.push(memoHref(ev.memo.id));
             finished = true;
           } else if (ev.type === "duplicate") {
             setPhase({ name: "idle" });
             toast("이미 저장된 영상이에요");
-            router.push(`/memo/${ev.memo.id}`);
+            router.push(memoHref(ev.memo.id));
             finished = true;
           } else if (ev.type === "error") {
             throw new Error(ev.message);

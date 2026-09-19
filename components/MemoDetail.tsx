@@ -7,6 +7,7 @@ import { CATEGORIES, categoryOf } from "@/lib/categories";
 import { formatDate, KIND_LABEL, memoToMarkdown } from "@/lib/format";
 import { renderInline, renderRich } from "@/lib/richtext";
 import type { CategoryId, Memo } from "@/lib/types";
+import { DEMO, demoStore, imageSrc } from "@/lib/demo";
 import { KindIcon } from "./MemoCard";
 import { useMemos } from "./MemoProvider";
 import { IconArrowLeft, IconCopy, IconLink, IconPlay, IconTrash } from "./Icons";
@@ -20,6 +21,10 @@ export function MemoDetail({ id }: { id: string }) {
   // 새로고침으로 바로 들어온 경우 목록보다 먼저 한 장만 가져온다
   useEffect(() => {
     if (memos.some((m) => m.id === id)) return;
+    if (DEMO) {
+      setFetched(demoStore.get(id));
+      return;
+    }
     let alive = true;
     fetch(`/api/memos/${id}`)
       .then(async (r) => (r.ok ? ((await r.json()) as { memo: Memo }).memo : null))
@@ -132,12 +137,13 @@ export function MemoDetail({ id }: { id: string }) {
       )}
 
       {memo.kind === "youtube" && memo.source.thumbnail && (
-        <a className="hero" href={memo.source.url} target="_blank" rel="noreferrer" style={{ display: "block" }}>
+        <a className="hero" href={memo.source.url ?? "#"} target={memo.source.url ? "_blank" : undefined} rel="noreferrer" style={{ display: "block" }}>
           <img
-            src={memo.source.thumbnail.replace("hqdefault", "maxresdefault")}
+            src={imageSrc(memo.source.thumbnail.replace("hqdefault", "maxresdefault"))}
             onError={(e) => {
               const img = e.currentTarget;
-              if (img.src !== memo.source.thumbnail) img.src = memo.source.thumbnail!;
+              const fallback = imageSrc(memo.source.thumbnail!);
+              if (!img.src.endsWith(fallback)) img.src = fallback;
               else img.classList.add("broken");
             }}
             alt=""
@@ -151,7 +157,7 @@ export function MemoDetail({ id }: { id: string }) {
       )}
       {memo.kind === "photo" && memo.source.image && (
         <div className="hero photo">
-          <img src={`/api/files/${memo.source.image}`} alt={memo.title} />
+          <img src={imageSrc(memo.source.image)} alt={memo.title} />
         </div>
       )}
 
@@ -207,7 +213,7 @@ export function MemoDetail({ id }: { id: string }) {
           <i /> {memo.confidence === "high" ? "원문을 직접 읽고 정리" : memo.confidence === "medium" ? "검색 자료를 바탕으로 정리" : "확인이 부족한 내용 포함"}
           {memo.kind === "youtube" && memo.source.transcript === false && " · 자막 없음"}
         </span>
-        <span>{memo.model ? `Claude ${memo.model}` : ""}</span>
+        <span>{memo.model && memo.model !== "demo" ? `Claude ${memo.model}` : DEMO ? "예시 메모" : ""}</span>
       </footer>
     </article>
   );

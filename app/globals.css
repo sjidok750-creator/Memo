@@ -874,13 +874,20 @@ img {
 .banner {
   display: flex;
   gap: 12px;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
   padding: 14px 16px;
   border-radius: 14px;
   background: var(--accent-soft);
   color: var(--accent-ink);
   font-size: 14px;
   margin-bottom: 20px;
+}
+.banner .btn {
+  flex: none;
+  color: var(--accent-ink);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: transparent;
 }
 .banner code {
   background: rgba(0, 0, 0, 0.06);
