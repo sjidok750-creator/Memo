@@ -851,8 +851,8 @@ img {
 .card:hover .cover {
   transform: rotate(0deg) translateY(-2px);
 }
-/* 찾아낸 실제 표지. 글자 표지 위에 겹쳐 두고, 그림이 실제로 열렸을 때만(.shown) 보인다 */
-.cover-real {
+/* 찾아낸 대표 이미지. 글자 표지 위에 겹쳐 두고, 그림이 실제로 열렸을 때만(.shown) 보인다 */
+.thumb-real {
   position: absolute;
   inset: 0;
   opacity: 0;
@@ -860,10 +860,10 @@ img {
   background: var(--bg-sunken);
   transition: opacity 0.25s ease;
 }
-.cover-real.shown {
+.thumb-real.shown {
   opacity: 1;
 }
-.card-book .cover-blur {
+.card-book .thumb-blur {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -873,15 +873,17 @@ img {
   transform: scale(1.15);
   opacity: 0.55;
 }
-.card-book .cover-img {
+/* 세로로 긴 책 표지와 가로로 긴 그림·도표가 한 규칙으로 다 들어가게:
+   높이를 기준으로 키우되 너비가 넘치면 폭에서 잘라 준다 */
+.card-book .thumb-img {
   position: absolute;
   inset: 0;
   margin: auto;
   width: auto;
-  max-width: 62%;
-  height: 84%;
+  height: 86%;
+  max-width: 92%;
   object-fit: contain;
-  border-radius: 2px 4px 4px 2px;
+  border-radius: 3px;
   box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.65);
 }
 .card-body {
@@ -1171,14 +1173,14 @@ img {
   max-height: 560px;
   margin: 0 auto;
 }
-/* 책 표지: 흐린 표지를 배경으로 깔고 그 위에 또렷한 표지를 올린다 */
+/* 대표 이미지: 흐린 그림을 배경으로 깔고 그 위에 또렷한 그림을 올린다 */
 .hero.book {
   display: grid;
   place-items: center;
   min-height: 260px;
   padding: 26px 16px;
 }
-.hero.book .cover-blur {
+.hero.book .thumb-blur {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1188,14 +1190,26 @@ img {
   transform: scale(1.2);
   opacity: 0.5;
 }
-.hero.book .cover-img {
+.hero.book .thumb-img {
   position: relative;
   width: auto;
-  max-width: min(220px, 60%);
-  max-height: 320px;
+  height: auto;
+  max-width: min(420px, 86%);
+  max-height: 340px;
   object-fit: contain;
-  border-radius: 2px 6px 6px 2px;
+  border-radius: 4px;
   box-shadow: 0 18px 34px -16px rgba(0, 0, 0, 0.7);
+}
+.thumb-credit {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.42);
+  padding: 3px 8px;
+  border-radius: 999px;
+  backdrop-filter: blur(3px);
 }
 .hero .play {
   position: absolute;
