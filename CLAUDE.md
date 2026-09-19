@@ -22,7 +22,7 @@
 - `lib/richtext.tsx` `**강조**` → 굵게+밑줄+Claude 색 (`.hl`)
 - `lib/i18n.ts` UI 문자열 사전 (ko/en/ja). 컴포넌트는 `useMemos().t("key")` 로 읽는다. 분야 이름은 `CATEGORIES[].label[lang]`
 - `app/api/capture` NDJSON 진행 스트림, `app/api/backup` 내보내기/가져오기
-- `worker/` 동기화 서버 (Cloudflare Workers + D1). `/mcp/<token>` 은 Claude 커넥터(MCP, `@modelcontextprotocol/sdk` 의 WebStandard 전송, 무상태 JSON 응답), `/api/<token>/...` 은 앱 저장 API. 토큰은 D1 settings 에 있고 첫 방문 때 한 번 보여준다. 루트 tsconfig 에서 제외되어 있으니 `cd worker && npm run typecheck` 로 따로 검사한다. 로컬 테스트: `npx wrangler dev --port 8787`.
+- `worker/gist-worker.js` 동기화 서버 **단일 파일, 의존성 없음** (Cloudflare Workers + D1). MCP 는 SDK 없이 JSON-RPC 로 직접 처리한다 (`initialize`/`tools/list`/`tools/call`, 알림은 202, GET 은 405, protocolVersion 은 클라이언트 것을 그대로 돌려준다). `/mcp/<token>` 커넥터, `/api/<token>/...` 앱 API, `/s/<token>` 은 앱으로 보내는 링크. 토큰은 D1 `settings` 에 있고 첫 방문 때 한 번만 보여준다. D1 이 없으면 설정 안내 HTML 을 주되 커넥터는 붙을 수 있게 둔다. 폰에서 대시보드에 붙여넣어 배포하는 것이 기본 경로이므로 **의존성·빌드 단계를 추가하지 말 것**. 검증: `npx wrangler dev --port 8788` 후 공식 MCP 클라이언트(`@modelcontextprotocol/sdk` 의 Client + StreamableHTTPClientTransport)로 연결해 도구를 호출해 본다.
 - 정적 모드의 저장소는 `lib/store-client.ts` 하나만 쓴다: 동기화 서버가 연결돼 있으면(`lib/sync.ts`, localStorage `memo-sync`) 서버, 아니면 `demoStore`. 사진은 서버 모드에서 `img:<id>` 참조이고 `imageSrc` 가 주소로 바꾼다. 앱으로 돌아올 때(visibilitychange/focus) 서버 목록을 다시 읽는다.
 
 ## 테스트 방법

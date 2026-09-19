@@ -2,19 +2,12 @@
   "name": "gist-sync",
   "private": true,
   "type": "module",
-  "description": "Gist 동기화 서버: Claude 커넥터(MCP) + 앱 저장 API. Cloudflare Workers + D1",
+  "description": "Gist 동기화 서버: Claude 커넥터(MCP) + 앱 저장 API. Cloudflare Workers + D1. 의존성 없는 단일 파일",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "zod": "^4.1.0"
+    "deploy": "wrangler deploy"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260919.1",
-    "typescript": "^5.9.0",
     "wrangler": "^4.135.0"
   }
 }

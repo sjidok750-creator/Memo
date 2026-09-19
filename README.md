@@ -74,7 +74,7 @@ npm run typecheck  # 타입 검사
 
 ## 완전 자동: Claude 커넥터(MCP) + 동기화 서버
 
-`worker/` 의 작은 서버를 Cloudflare 에 올리면 (무료, [worker/README.md](worker/README.md)) Claude 웹·데스크톱·아이폰 앱 어디서든 "어린 왕자 요약해서 Gist에 저장해"로 끝나고, 메모는 모든 기기에서 같이 보입니다. Gist 상단 상태 표시 → **동기화 서버 연결**에 서버가 알려준 주소를 붙여넣으면 됩니다.
+`worker/gist-worker.js` 한 파일을 Cloudflare 에 붙여넣어 올리면 (무료, 폰에서 5분, [worker/README.md](worker/README.md)) Claude 웹·데스크톱·아이폰 앱 어디서든 "어린 왕자 요약해서 Gist에 저장해"로 끝나고, 메모는 모든 기기에서 같이 보입니다. Gist 상단 상태 표시 → **동기화 서버 연결**에 서버가 알려준 주소를 붙여넣으면 됩니다.
 
 ## GitHub Pages 에서 바로 쓰기 (브라우저 모드)
 
