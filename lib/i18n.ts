@@ -224,6 +224,7 @@ const ko: Dict = {
   "sync.server": "서버",
   "status.short.synced": "동기화됨",
   "connect.apiTitle": "Claude API",
+  "capture.addPhoto": "사진",
   "md.oneLiner": "한 줄 정리",
   "lang.label": "언어",
 };
@@ -419,6 +420,7 @@ const en: Dict = {
   "sync.server": "Server",
   "status.short.synced": "Synced",
   "connect.apiTitle": "Claude API",
+  "capture.addPhoto": "Photo",
   "md.oneLiner": "In one line",
   "lang.label": "Language",
 };
@@ -614,6 +616,7 @@ const ja: Dict = {
   "sync.server": "サーバー",
   "status.short.synced": "同期中",
   "connect.apiTitle": "Claude API",
+  "capture.addPhoto": "写真",
   "md.oneLiner": "ひとことで",
   "lang.label": "言語",
 };

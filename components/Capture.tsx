@@ -38,7 +38,6 @@ export function Capture() {
   const [drag, setDrag] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [now, setNow] = useState(0);
-  const [touch, setTouch] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
 
@@ -46,7 +45,6 @@ export function Capture() {
   const busy = Boolean(job && !job.replace);
 
   useEffect(() => {
-    setTouch(window.matchMedia("(pointer: coarse)").matches);
     // Claude 앱으로 보낸 뒤 돌아왔는지 (답을 기다리는 중)
     const check = () => setAwaiting(Boolean(readPendingImport()));
     check();
@@ -336,35 +334,26 @@ export function Capture() {
         </div>
         <div className="capture-meta">
           <Detect kind={replyText ? "import" : image ? "photo" : detected.kind} />
-          <span className="kbd">
-            <kbd>Enter</kbd> {t("capture.enterHint")}
+          <span className="capture-meta-right">
+            {!image && (
+              <button
+                className="photo-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileRef.current?.click();
+                }}
+                aria-label={t("capture.hintPhotoTouch")}
+              >
+                <IconImage size={14} /> {t("capture.addPhoto")}
+              </button>
+            )}
+            <span className="kbd">
+              <kbd>Enter</kbd> {t("capture.enterHint")}
+            </span>
           </span>
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void acceptFile(e.target.files?.[0])} />
         </div>
       </div>
-
-      <div className="hints">
-        <span className="label">{t("capture.hintsLabel")}</span>
-        <button className="hint" onClick={() => textRef.current?.focus()}>
-          <IconPlay size={12} /> {t("capture.hintYoutube")}
-        </button>
-        <button className="hint" onClick={() => textRef.current?.focus()}>
-          <IconBook size={13} /> {t("capture.hintBook")}
-        </button>
-        <button className="hint" onClick={() => fileRef.current?.click()}>
-          <IconImage size={13} /> {touch ? t("capture.hintPhotoTouch") : t("capture.hintPhoto")}
-        </button>
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void acceptFile(e.target.files?.[0])} />
-        {apiReady ? (
-          <button className="hint claude" onClick={() => void openClaude()} disabled={!canOpenClaude}>
-            <IconSpark size={12} /> {t("app.button")}
-          </button>
-        ) : DEMO && health?.mock ? (
-          <button className="hint" onClick={submit} disabled={!canSubmit}>
-            {t("capture.demoSubmit")}
-          </button>
-        ) : null}
-      </div>
-      <div className="app-hint">{t("app.hint")}</div>
 
       {error && (
         <div className="error-box" role="alert">

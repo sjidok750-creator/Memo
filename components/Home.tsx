@@ -11,7 +11,6 @@ import { useMemos } from "./MemoProvider";
 import { IconDownload, IconSearch, IconUpload } from "./Icons";
 import { DEMO } from "@/lib/demo";
 import { clientStore } from "@/lib/store-client";
-import { Connect } from "./Connect";
 import { LangSwitch } from "./LangSwitch";
 import { useEffect } from "react";
 import { useReplyImport } from "./useReplyImport";
@@ -96,8 +95,6 @@ export function Home() {
         </div>
         <LangSwitch />
       </header>
-
-      {DEMO && !synced && <Connect />}
 
       {health && !health.apiKey && (
         <div className="banner">

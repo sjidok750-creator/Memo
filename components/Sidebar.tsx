@@ -10,7 +10,7 @@ import { useMemos } from "./MemoProvider";
 import { BrandMark, IconX } from "./Icons";
 import { DEMO } from "@/lib/demo";
 import { MODEL } from "@/lib/claude";
-import { useClaudeConnection } from "./Connect";
+import { ConnectKeyPanel, useClaudeConnection } from "./Connect";
 
 export function Sidebar() {
   const { memos, category, setCategory, health, lang, t } = useMemos();
@@ -222,7 +222,7 @@ function StatusPill() {
                 </div>
               </>
             ) : (
-              <div className="sheet-note">{t("connect.demoBody")}</div>
+              <ConnectKeyPanel />
             )}
           </div>
         </div>,
