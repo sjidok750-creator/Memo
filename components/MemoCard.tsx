@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { categoryOf } from "@/lib/categories";
-import { formatDateShort, KIND_LABEL } from "@/lib/format";
+import { formatDateShort, kindLabel } from "@/lib/format";
 import type { Memo } from "@/lib/types";
-import { asset, imageSrc, memoHref } from "@/lib/demo";
+import { imageSrc, memoHref } from "@/lib/demo";
 import { IconBook, IconImage, IconPlay } from "./Icons";
+import { useMemos } from "./MemoProvider";
 
 export function KindIcon({ kind, size = 13 }: { kind: Memo["kind"]; size?: number }) {
   if (kind === "youtube") return <IconPlay size={size} />;
@@ -14,6 +15,7 @@ export function KindIcon({ kind, size = 13 }: { kind: Memo["kind"]; size?: numbe
 }
 
 export function MemoCard({ memo, index = 0 }: { memo: Memo; index?: number }) {
+  const { lang } = useMemos();
   const cat = categoryOf(memo.category);
   const c = { "--c": `light-dark(${cat.color}, ${cat.dark})` } as React.CSSProperties;
 
@@ -45,17 +47,17 @@ export function MemoCard({ memo, index = 0 }: { memo: Memo; index?: number }) {
         <div className="card-top">
           <span className="kind">
             <KindIcon kind={memo.kind} />
-            {KIND_LABEL[memo.kind]}
+            {kindLabel(memo.kind, lang)}
           </span>
           <span className="chip" style={c}>
-            {cat.label}
+            {cat.label[lang]}
           </span>
         </div>
         <h3 className="card-title">{memo.title}</h3>
         <p className="card-line">{memo.oneLiner}</p>
         <div className="card-foot">
-          <span className="tags">{memo.tags.slice(0, 3).map((t) => `#${t}`).join("  ")}</span>
-          <time dateTime={memo.createdAt}>{formatDateShort(memo.createdAt)}</time>
+          <span className="tags">{memo.tags.slice(0, 3).map((x) => `#${x}`).join("  ")}</span>
+          <time dateTime={memo.createdAt}>{formatDateShort(memo.createdAt, lang)}</time>
         </div>
       </div>
     </Link>

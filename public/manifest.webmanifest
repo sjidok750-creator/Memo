@@ -1,6 +1,6 @@
 {
-  "name": "나만의 메모장",
-  "short_name": "메모장",
+  "name": "Gist",
+  "short_name": "Gist",
   "description": "유튜브·책·사진을 넣으면 핵심이 강조된 요약 메모가 됩니다.",
   "start_url": "./",
   "scope": "./",

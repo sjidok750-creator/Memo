@@ -5,6 +5,7 @@ import type { CategoryId, Memo, MemoKind } from "@/lib/types";
 import { DEMO, demoStore } from "@/lib/demo";
 import { isBrowserConnected, KEY_EVENT } from "@/lib/browser-key";
 import { MODEL } from "@/lib/claude";
+import { detectLang, LANG_KEY, translate, type Lang } from "@/lib/i18n";
 
 interface Health {
   apiKey: boolean;
@@ -27,6 +28,9 @@ interface Ctx {
   remove: (id: string) => Promise<void>;
   patch: (id: string, p: Partial<Memo>) => Promise<Memo | null>;
   toast: (msg: string) => void;
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  t: (key: string, vars?: Record<string, string | number>) => string;
 }
 
 const MemoContext = createContext<Ctx | null>(null);
@@ -39,11 +43,27 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
   const [query, setQuery] = useState("");
   const [health, setHealth] = useState<Health | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [lang, setLangState] = useState<Lang>("ko");
+  const setLang = useCallback((l: Lang) => {
+    setLangState(l);
+    try {
+      window.localStorage.setItem(LANG_KEY, l);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
+    setLangState(detectLang());
+  }, []);
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+  const t = useCallback((key: string, vars?: Record<string, string | number>) => translate(lang, key, vars), [lang]);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async () => {
     if (DEMO) {
-      setMemos(demoStore.list());
+      setMemos(demoStore.list(lang));
       setLoading(false);
       return;
     }
@@ -54,7 +74,7 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     void refresh();
@@ -87,15 +107,15 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    if (DEMO) demoStore.remove(id);
+    if (DEMO) demoStore.remove(id, lang);
     else await fetch(`/api/memos/${id}`, { method: "DELETE" });
     setMemos((prev) => prev.filter((m) => m.id !== id));
-  }, []);
+  }, [lang]);
 
   const patch = useCallback(
     async (id: string, p: Partial<Memo>) => {
       if (DEMO) {
-        const memo = demoStore.patch(id, p);
+        const memo = demoStore.patch(id, p, lang);
         if (memo) upsert(memo);
         return memo;
       }
@@ -111,12 +131,12 @@ export function MemoProvider({ children }: { children: React.ReactNode }) {
       upsert(memo);
       return memo;
     },
-    [upsert, memos],
+    [upsert, memos, lang],
   );
 
   const value = useMemo<Ctx>(
-    () => ({ memos, loading, category, setCategory, kind, setKind, query, setQuery, health, refresh, upsert, remove, patch, toast }),
-    [memos, loading, category, kind, query, health, refresh, upsert, remove, patch, toast],
+    () => ({ memos, loading, category, setCategory, kind, setKind, query, setQuery, health, refresh, upsert, remove, patch, toast, lang, setLang, t }),
+    [memos, loading, category, kind, query, health, refresh, upsert, remove, patch, toast, lang, setLang, t],
   );
 
   return (

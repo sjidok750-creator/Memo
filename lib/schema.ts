@@ -1,12 +1,10 @@
 import { z } from "zod";
-import { CATEGORY_IDS } from "./categories";
+import { CATEGORY_GUIDE, CATEGORY_IDS } from "./categories";
 
 /** Claude 구조화 출력 스키마. MemoContent 와 1:1 로 대응한다. */
 export const MemoContentSchema = z.object({
   title: z.string().describe("메모 제목. 책은 정확한 책 제목, 영상은 내용을 압축한 제목, 사진은 내용을 한눈에 알 수 있는 제목"),
-  category: z.enum(CATEGORY_IDS).describe(
-    "분야. business=경제·경영, self=자기계발, humanities=인문·철학, science=과학·기술, history=역사, arts=문학·예술, health=건강·라이프, society=사회·정치, education=교육·학습, etc=기타",
-  ),
+  category: z.enum(CATEGORY_IDS).describe(`분야. ${CATEGORY_GUIDE}. work 는 회사 일·직무·프로젝트·커리어 등 업무와 직접 관련된 내용`),
   tags: z.array(z.string()).describe("핵심 키워드 3~6개. 짧은 명사형"),
   oneLiner: z.string().describe("전체를 한 문장으로 정리한 '한 줄 정리'. 강조 마크 없이 순수 텍스트"),
   summary: z

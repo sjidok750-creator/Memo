@@ -9,7 +9,7 @@ import { IconCheck, IconSpark, IconX } from "./Icons";
 
 /** 정적 배포(브라우저 모드)에서 Claude API 키를 연결하는 패널 */
 export function Connect() {
-  const { refresh, toast, memos } = useMemos();
+  const { refresh, toast, memos, lang, t } = useMemos();
   const [connected, setConnected] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
   const [key, setKey] = useState("");
@@ -34,18 +34,18 @@ export function Connect() {
     setConnected(true);
     setOpen(false);
     setKey("");
-    toast("Claude 와 연결됐어요");
+    toast(t("connect.connected"));
   };
   const disconnect = () => {
-    if (!window.confirm("연결을 해제할까요? 저장된 메모는 그대로 남아요.")) return;
+    if (!window.confirm(t("connect.disconnectConfirm"))) return;
     setBrowserApiKey(null);
     setConnected(false);
-    toast("연결을 해제했어요");
+    toast(t("connect.disconnected"));
   };
   const clearExamples = () => {
-    const n = demoStore.clearExamples();
+    const n = demoStore.clearExamples(lang);
     void refresh();
-    toast(n ? `예시 메모 ${n}개를 지웠어요` : "지울 예시 메모가 없어요");
+    toast(n ? t("connect.clearedN", { n }) : t("connect.nothingToClear"));
   };
 
   if (connected === null) return null;
@@ -54,32 +54,34 @@ export function Connect() {
     return (
       <div className="banner ok">
         <span>
-          <strong>Claude 연결됨</strong> · 이 기기에서 바로 요약해요 ({MODEL}). 유튜브는 브라우저에서 자막을 못 읽어 웹 검색으로 조사하고, 메모는 이 브라우저에 저장돼요. 백업은 아래에서.
+          <strong>{t("connect.connectedTitle")}</strong> · {t("connect.connectedBody", { model: MODEL })}
         </span>
         <span className="banner-actions">
           {examples > 0 && (
             <button className="btn sm" onClick={clearExamples}>
-              예시 메모 지우기
+              {t("connect.clearExamples")}
             </button>
           )}
           <button className="btn sm ghost" onClick={disconnect}>
-            연결 해제
+            {t("connect.disconnect")}
           </button>
         </span>
       </div>
     );
   }
 
+  const help = t("connect.help", { link: "__LINK__" }).split("__LINK__");
+
   return (
     <div className="banner">
       {!open ? (
         <>
           <span>
-            <strong>미리보기 데모</strong> · 지금은 예시 문장으로 흐름만 보여줘요. Claude API 키를 넣으면 이 기기에서 실제로 요약합니다.
+            <strong>{t("connect.demoTitle")}</strong> · {t("connect.demoBody")}
           </span>
           <span className="banner-actions">
             <button className="btn sm primary" onClick={() => setOpen(true)}>
-              <IconSpark size={13} /> Claude 연결
+              <IconSpark size={13} /> {t("connect.button")}
             </button>
           </span>
         </>
@@ -93,20 +95,22 @@ export function Connect() {
               value={key}
               onChange={(e) => setKey(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && void connect()}
-              aria-label="Claude API 키"
+              aria-label={t("connect.keyLabel")}
               autoComplete="off"
               spellCheck={false}
             />
             <button className="btn sm primary" onClick={() => void connect()} disabled={busy || !key.trim()}>
-              {busy ? "확인 중…" : <><IconCheck /> 연결</>}
+              {busy ? t("connect.checking") : <><IconCheck /> {t("connect.connect")}</>}
             </button>
-            <button className="btn sm ghost" onClick={() => { setOpen(false); setError(null); }} aria-label="닫기">
+            <button className="btn sm ghost" onClick={() => { setOpen(false); setError(null); }} aria-label={t("capture.close")}>
               <IconX />
             </button>
           </div>
           {error && <div className="connect-error">{error}</div>}
           <div className="connect-help">
-            키는 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">console.anthropic.com</a> 에서 만들 수 있어요. 키는 이 기기 브라우저에만 저장되고 Anthropic 서버로만 전송돼요. 공용 기기라면 다 쓴 뒤 연결을 해제하세요.
+            {help[0]}
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">console.anthropic.com</a>
+            {help[1]}
           </div>
         </div>
       )}

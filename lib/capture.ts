@@ -4,6 +4,7 @@ import path from "path";
 import { createMemo, findByVideoId, getMemo, newId, saveImage, updateMemo, UPLOAD_DIR } from "./store";
 import { fetchTranscript, fetchVideoInfo, parseYouTubeId } from "./youtube";
 import type { CaptureEvent, CaptureRequest, Memo } from "./types";
+import type { Lang } from "./i18n";
 
 export class CaptureError extends Error {}
 
@@ -22,12 +23,13 @@ export async function runCapture(req: CaptureRequest, emit: (e: CaptureEvent) =>
   }
   const now = new Date().toISOString();
   const base = { id: newId(), createdAt: now, updatedAt: now };
+  const lang: Lang = req.lang ?? "ko";
 
   // 다시 요약: 기존 메모의 원본으로 요약만 새로 만들어 교체한다
   if (req.replace) {
     const existing = await getMemo(req.replace);
     if (!existing) throw new CaptureError("다시 요약할 메모를 찾을 수 없습니다.");
-    return { memo: await resummarize(existing, emit, signal), duplicate: false };
+    return { memo: await resummarize(existing, emit, signal, lang), duplicate: false };
   }
 
   if (req.kind === "youtube") {
@@ -42,8 +44,8 @@ export async function runCapture(req: CaptureRequest, emit: (e: CaptureEvent) =>
     const info = await fetchVideoInfo(videoId);
     emit({ type: "stage", id: "transcript", label: "자막 수집" });
     const transcript = await fetchTranscript(videoId);
-    emit({ type: "stage", id: "summarize", label: transcript ? "자막 읽고 요약 작성" : "자막이 없어 웹에서 조사 후 요약" });
-    const { content, model } = await summarizeYouTube(info, transcript, signal);
+    emit({ type: "stage", id: transcript ? "summarize-transcript" : "summarize-web", label: transcript ? "자막 읽고 요약 작성" : "자막이 없어 웹에서 조사 후 요약" });
+    const { content, model } = await summarizeYouTube(info, transcript, signal, lang);
     emit({ type: "stage", id: "save", label: "분야 분류 및 저장" });
     const memo = await createMemo({
       ...base,
@@ -61,8 +63,8 @@ export async function runCapture(req: CaptureRequest, emit: (e: CaptureEvent) =>
     if (!query) throw new CaptureError("책 제목을 입력하세요.");
     if (query.length > 200) throw new CaptureError("책 제목이 너무 깁니다.");
     emit({ type: "stage", id: "search", label: "책 정보 검색" });
-    emit({ type: "stage", id: "summarize", label: "핵심 내용 요약 · 명문장 발췌" });
-    const { content, model } = await summarizeBook(query, signal);
+    emit({ type: "stage", id: "summarize-book", label: "핵심 내용 요약 · 명문장 발췌" });
+    const { content, model } = await summarizeBook(query, signal, lang);
     emit({ type: "stage", id: "save", label: "분야 분류 및 저장" });
     return { memo: await createMemo({ ...base, ...content, kind: "book", model, source: { query } }), duplicate: false };
   }
@@ -71,9 +73,9 @@ export async function runCapture(req: CaptureRequest, emit: (e: CaptureEvent) =>
     if (!req.image) throw new CaptureError("사진이 없습니다.");
     emit({ type: "stage", id: "upload", label: "사진 저장" });
     const saved = await saveImage(req.image);
-    emit({ type: "stage", id: "summarize", label: "사진 읽고 요약 작성" });
+    emit({ type: "stage", id: "summarize-photo", label: "사진 읽고 요약 작성" });
     const note = req.note?.trim() || undefined;
-    const { content, model } = await summarizePhoto(saved, note, signal);
+    const { content, model } = await summarizePhoto(saved, note, signal, lang);
     emit({ type: "stage", id: "save", label: "분야 분류 및 저장" });
     return { memo: await createMemo({ ...base, ...content, kind: "photo", model, source: { image: saved.file, note } }), duplicate: false };
   }
@@ -81,7 +83,7 @@ export async function runCapture(req: CaptureRequest, emit: (e: CaptureEvent) =>
   throw new CaptureError("알 수 없는 입력 종류입니다.");
 }
 
-async function resummarize(memo: Memo, emit: (e: CaptureEvent) => void, signal?: AbortSignal): Promise<Memo> {
+async function resummarize(memo: Memo, emit: (e: CaptureEvent) => void, signal: AbortSignal | undefined, lang: Lang): Promise<Memo> {
   if (memo.kind === "youtube") {
     const videoId = memo.source.videoId ?? parseYouTubeId(memo.source.url ?? "");
     if (!videoId) throw new CaptureError("이 메모에는 영상 주소가 없습니다.");
@@ -89,8 +91,8 @@ async function resummarize(memo: Memo, emit: (e: CaptureEvent) => void, signal?:
     const info = await fetchVideoInfo(videoId);
     emit({ type: "stage", id: "transcript", label: "자막 수집" });
     const transcript = await fetchTranscript(videoId);
-    emit({ type: "stage", id: "summarize", label: transcript ? "자막 읽고 요약 작성" : "자막이 없어 웹에서 조사 후 요약" });
-    const { content, model } = await summarizeYouTube(info, transcript, signal);
+    emit({ type: "stage", id: transcript ? "summarize-transcript" : "summarize-web", label: transcript ? "자막 읽고 요약 작성" : "자막이 없어 웹에서 조사 후 요약" });
+    const { content, model } = await summarizeYouTube(info, transcript, signal, lang);
     emit({ type: "stage", id: "save", label: "저장" });
     const updated = await updateMemo(memo.id, {
       ...content,
@@ -103,8 +105,8 @@ async function resummarize(memo: Memo, emit: (e: CaptureEvent) => void, signal?:
   if (memo.kind === "book") {
     const query = memo.source.query || memo.title;
     emit({ type: "stage", id: "search", label: "책 정보 검색" });
-    emit({ type: "stage", id: "summarize", label: "핵심 내용 요약 · 명문장 발췌" });
-    const { content, model } = await summarizeBook(query, signal);
+    emit({ type: "stage", id: "summarize-book", label: "핵심 내용 요약 · 명문장 발췌" });
+    const { content, model } = await summarizeBook(query, signal, lang);
     emit({ type: "stage", id: "save", label: "저장" });
     return (await updateMemo(memo.id, { ...content, model }))!;
   }
@@ -115,8 +117,8 @@ async function resummarize(memo: Memo, emit: (e: CaptureEvent) => void, signal?:
   if (!buf) throw new CaptureError("저장된 사진 파일을 찾을 수 없습니다.");
   const ext = memo.source.image.split(".").pop()!.toLowerCase();
   const mediaType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
-  emit({ type: "stage", id: "summarize", label: "사진 읽고 요약 작성" });
-  const { content, model } = await summarizePhoto({ mediaType, base64: buf.toString("base64") }, memo.source.note, signal);
+  emit({ type: "stage", id: "summarize-photo", label: "사진 읽고 요약 작성" });
+  const { content, model } = await summarizePhoto({ mediaType, base64: buf.toString("base64") }, memo.source.note, signal, lang);
   emit({ type: "stage", id: "save", label: "저장" });
   return (await updateMemo(memo.id, { ...content, model }))!;
 }

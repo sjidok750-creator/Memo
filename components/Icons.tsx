@@ -109,3 +109,25 @@ export const IconNote = ({ size = 18, ...p }: P) => (
     <path d="M15 3v4h4M9 12h6M9 16h4" />
   </svg>
 );
+
+/** 앱 심볼: 그라데이션 라운드 사각형 위에 강조된 줄 */
+export const BrandMark = ({ size = 32, id = "bm" }: { size?: number; id?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+    <defs>
+      <linearGradient id={`${id}-g`} x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stopColor="#F5A27C" />
+        <stop offset="1" stopColor="#D2603A" />
+      </linearGradient>
+      <linearGradient id={`${id}-s`} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#fff" stopOpacity="0.22" />
+        <stop offset="1" stopColor="#fff" stopOpacity="0" />
+      </linearGradient>
+    </defs>
+    <rect width="64" height="64" rx="19" fill={`url(#${id}-g)`} />
+    <rect width="64" height="32" rx="19" fill={`url(#${id}-s)`} />
+    <rect x="15" y="17" width="34" height="6" rx="3" fill="#fff" opacity="0.5" />
+    <rect x="15" y="29" width="26" height="7" rx="3.5" fill="#fff" />
+    <rect x="15" y="39" width="26" height="2.4" rx="1.2" fill="#fff" opacity="0.95" />
+    <rect x="15" y="46" width="18" height="6" rx="3" fill="#fff" opacity="0.5" />
+  </svg>
+);

@@ -1,4 +1,4 @@
-# 나만의 메모장 — 작업 메모
+# Gist — 작업 메모
 
 유튜브 링크·책 제목·사진을 Claude 로 요약해 저장하는 개인 메모장. Next.js App Router + TypeScript, 외부 UI 라이브러리 없음 (app/globals.css 에 디자인 토큰).
 
@@ -16,6 +16,7 @@
 - `lib/browser-key.ts` + `lib/capture-browser.ts` 브라우저 모드: 사용자 키로 Claude 를 직접 호출 (`dangerouslyAllowBrowser`), 유튜브는 자막 없이 웹 도구로 조사
 - `components/Connect.tsx` 키 연결 패널 (정적 빌드에서만 렌더)
 - `lib/richtext.tsx` `**강조**` → 굵게+밑줄+Claude 색 (`.hl`)
+- `lib/i18n.ts` UI 문자열 사전 (ko/en/ja). 컴포넌트는 `useMemos().t("key")` 로 읽는다. 분야 이름은 `CATEGORIES[].label[lang]`
 - `app/api/capture` NDJSON 진행 스트림, `app/api/backup` 내보내기/가져오기
 
 ## 테스트 방법
@@ -23,6 +24,9 @@
 - 브라우저 모드: `npm run build:demo` 결과를 정적 서버로 띄우고, Playwright `page.route("https://api.anthropic.com/**")` 로 SSE 응답을 흉내내 확인 (실제 키 없이 요청 형태 검증). messages 요청 URL 은 `/v1/messages?beta=true` 다.
 
 ## 규칙
+- 화면에 보이는 글자는 반드시 `lib/i18n.ts` 에 세 언어로 넣고 `t()` 로 쓴다. 하드코딩 금지.
+- 서체는 시스템 폰트 스택(아이폰 SF Pro / Apple SD Gothic Neo / Hiragino)만 쓴다. 웹폰트·명조체를 새로 넣지 않는다.
+- 진행 단계는 서버가 stage `id` 만 의미 있게 보내고 클라이언트가 `stage.<id>` 키로 번역한다.
 - 요약 본문의 강조는 `**...**` 하나만 쓴다. 다른 마크다운은 렌더러가 지원하지 않는다.
 - 모바일(≤900px)에서 가로 넘침이 생기면 안 된다. 검증은 스크린샷이 아니라 `document.documentElement.scrollWidth === innerWidth` 로.
 - 새 API 라우트는 정적 데모 빌드에서 자동으로 제외되지만, 새 동적 페이지를 만들면 `scripts/build-demo.mjs` 의 목록에 추가해야 한다.

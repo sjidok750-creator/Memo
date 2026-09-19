@@ -5,6 +5,7 @@
  */
 import type { CaptureEvent, CaptureRequest, Memo, MemoKind } from "./types";
 import { isBrowserConnected } from "./browser-key";
+import type { Lang } from "./i18n";
 
 export const DEMO = process.env.NEXT_PUBLIC_DEMO === "1";
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -152,62 +153,217 @@ export const DEMO_MEMOS: Memo[] = [
   },
 ];
 
-/* ---------- 브라우저 저장소 ---------- */
-const KEY = "memo-demo-v1";
+const DEMO_MEMOS_EN: Memo[] = [
+  {
+    ...DEMO_MEMOS[0],
+    title: "The Little Prince",
+    tags: ["relationships", "essence", "grown-ups", "taming"],
+    oneLiner: "What is essential is invisible to the eye, and a bond becomes precious through the time you give it.",
+    summary:
+      "A pilot stranded in the desert meets a boy from a tiny planet. The boy has quarrelled with his rose and left, visiting planets ruled by a king, a vain man, a drunkard, a businessman and a geographer. **Grown-ups cling to numbers and possessions and miss what matters.**\n\nOn Earth a fox teaches him what it means to tame: to create ties, so that each becomes unique to the other. **The rose is precious not for what she is, but for the time the boy has given her.**\n\nThe story ends in parting, but not in grief alone. Look up at the stars, and if one of them holds a laughing boy, they all seem to laugh: **a way to bear absence.**",
+    keyPoints: [
+      "**Grown-ups trust numbers over essence.** Introduce a friend and they ask his age and his father's income, not what his voice is like.",
+      "To tame is to **create ties**; from then on the other is one of a kind in all the world.",
+      "**Responsibility grows out of ties.** You become responsible, forever, for what you have tamed.",
+      "Each grown-up the boy meets is trapped in one obsession and never looks beyond his own planet.",
+      "Grief is softened by **what shared time leaves behind**, as golden wheat reminds the fox of the boy's hair.",
+    ],
+    quotes: [
+      { text: "What is essential is invisible to the eye.", note: "The fox. Original: L'essentiel est invisible pour les yeux." },
+      { text: "It is the time you have wasted for your rose that makes your rose so important.", note: "Chapter 21" },
+      { text: "To tame means to create ties.", note: "The fox" },
+      { text: "All grown-ups were once children, but only few of them remember it.", note: "Dedication" },
+    ],
+    meta: { author: "Antoine de Saint-Exupéry", publisher: null, year: "1943", channel: null, duration: null },
+  },
+  {
+    ...DEMO_MEMOS[1],
+    title: "Why starting late is so costly with compound interest",
+    tags: ["compounding", "long-term", "time", "saving"],
+    oneLiner: "The biggest variable in compounding is time, not returns; catching up with an early starter is nearly impossible.",
+    summary:
+      "The video opens with two imaginary savers: one saves monthly from 25 for just ten years and stops; the other saves for thirty years starting at 35. At the same return, **the ten-year saver retires with more**, because compounding accelerates at the end.\n\nThe speaker stresses how flat the early curve is. The first decade shows little, and that is where most people give up. **The reward of compounding is almost entirely proportional to time endured.**\n\nThe advice is simple: automate saving instead of chasing returns, don't sell when markets wobble, and **the best time to start is always now.**",
+    keyPoints: [
+      "**Time beats returns.** Starting ten years earlier outperforms saving twice as long.",
+      "The early curve is flat, so **the first decade is the easiest place to quit.**",
+      "**Not selling midway** changes the outcome far more than a 1% difference in returns.",
+      "Automatic transfers remove willpower from the equation.",
+    ],
+    quotes: [
+      { text: "Compounding is interest paid on patience.", note: "around 12:40" },
+      { text: "The second-best time to start is now. The best one has already passed.", note: null },
+    ],
+    meta: { author: null, publisher: null, year: "2026", channel: "Money Grammar", duration: "18:24" },
+  },
+  {
+    ...DEMO_MEMOS[2],
+    source: { image: "/demo/photo-page.svg", note: "read on the commute" },
+    title: "Book page: habits are votes for an identity",
+    tags: ["habits", "identity", "small changes"],
+    oneLiner: "A habit is not a tool for reaching a goal; it is a vote for the kind of person you are.",
+    summary:
+      "The page argues for identity-based habits rather than outcome-based ones. Not 'I want to read more' but **'I am a reader'; set the identity first and the behaviour follows.**\n\nEvery small action is a vote for that identity. One vote doesn't win an election, but **as votes pile up they become evidence you can believe.** So an unbroken streak matters more than a perfect day.",
+    keyPoints: [
+      "Change lasts longer as you move from outcomes to processes to **identity**.",
+      "**Every action is a vote for an identity.** It is a majority, not a unanimous vote.",
+      "'Never miss twice' is more practical than perfectionism.",
+    ],
+    quotes: [{ text: "Every action you take is a vote for the type of person you wish to become.", note: "line in the photo" }],
+  },
+];
 
-function load(): Memo[] {
-  if (typeof window === "undefined") return DEMO_MEMOS;
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw) as Memo[];
-  } catch {
-    /* ignore */
-  }
-  return DEMO_MEMOS;
+const DEMO_MEMOS_JA: Memo[] = [
+  {
+    ...DEMO_MEMOS[0],
+    title: "星の王子さま",
+    tags: ["関係", "本質", "大人", "なつく"],
+    oneLiner: "本当に大切なものは目に見えず、関係は相手にかけた時間によって特別になる。",
+    summary:
+      "砂漠に不時着した飛行士が、小さな星から来た少年に出会う。少年は自分の星のバラとけんかして旅に出て、王様、うぬぼれ屋、酔っ払い、実業家、地理学者といった大人たちに会う。**大人たちは数字と所有に執着し、肝心なものを見ていない。**\n\n地球で出会ったキツネは「なつく」ということの意味を教える。それは絆を結ぶことであり、そうなれば互いに世界でただ一つの存在になる。**バラが大切なのはバラそのものではなく、少年がバラにかけた時間のためだ。**\n\n物語は別れで終わるが、悲しみだけを残しはしない。星を見上げてそのどれかで少年が笑っていると思えば、すべての星が笑って見える。**不在に耐える方法**についての慰めで締めくくられる。",
+    keyPoints: [
+      "**大人は本質より数字を信じる。** 新しい友だちを紹介すると、声や好きな遊びではなく年齢や父親の収入を尋ねる。",
+      "なつくとは**絆を結ぶこと**であり、その瞬間から相手は世界にただ一人の存在になる。",
+      "**責任は関係から生まれる。** なつかせたものには、いつまでも責任がある。",
+      "少年が会った大人たちはそれぞれ一つの執着（権力、承認、所有、知識）に閉じ込められ、自分の星の外を見ない。",
+      "別れの悲しみは**共に過ごした時間が残したもの**で慰められる。麦畑の金色がキツネに少年の髪を思い出させるように。",
+    ],
+    quotes: [
+      { text: "大切なものは、目に見えない。", note: "キツネの言葉。原文: L'essentiel est invisible pour les yeux." },
+      { text: "きみがバラのために費やした時間が、バラをそんなに大切なものにしたんだ。", note: "第21章" },
+      { text: "なつくって、絆を結ぶってことだよ。", note: "キツネ" },
+      { text: "大人はだれでも、はじめは子どもだった。でもそれを忘れずにいる大人はほとんどいない。", note: "献辞" },
+    ],
+    meta: { author: "アントワーヌ・ド・サン＝テグジュペリ", publisher: null, year: "1943", channel: null, duration: null },
+  },
+  {
+    ...DEMO_MEMOS[1],
+    title: "複利はなぜ遅く始めるほど不利なのか",
+    tags: ["複利", "長期投資", "時間", "貯蓄"],
+    oneLiner: "複利で最大の変数は利回りではなく時間であり、早く始めた人に後から追いつくのはほぼ不可能だ。",
+    summary:
+      "動画は二人の仮想の例から始まる。25歳から10年だけ毎月貯めてやめた人と、35歳から30年貯め続けた人。同じ利回りなら、**10年しか貯めなかった前者のほうが引退時に多くの資産を持つ。** 複利は後半ほど加速するからだ。\n\n話し手は複利曲線の前半が退屈なほど平らであることを強調する。最初の10年は成果が見えず、多くの人がここで諦める。**複利の報酬は「耐えた時間」にほぼ比例する。**\n\n実践の助言は単純だ。利回りを追うより自動積立で貯蓄を習慣にし、相場が揺れても売らず、**始めるのに最も良い時は常に「今」**だということ。",
+    keyPoints: [
+      "**時間は利回りより重要だ。** 10年早く始めた人は、2倍長く貯めた人より先を行く。",
+      "複利曲線は前半が平らで、**最初の10年が最も諦めやすい区間**だ。",
+      "利回り1%の差より**途中で売らないこと**のほうが結果をはるかに大きく変える。",
+      "自動積立で意志力の入り込む余地をなくすのが現実的な戦略だ。",
+    ],
+    quotes: [
+      { text: "複利とは、忍耐に支払われる利息だ。", note: "動画 12:40 付近" },
+      { text: "二番目に良い始め時は今だ。一番良い時はもう過ぎた。", note: null },
+    ],
+    meta: { author: null, publisher: null, year: "2026", channel: "お金の文法", duration: "18:24" },
+  },
+  {
+    ...DEMO_MEMOS[2],
+    source: { image: "/demo/photo-page.svg", note: "通勤中に読んだ箇所" },
+    title: "本のページ — 習慣はアイデンティティへの投票だ",
+    tags: ["習慣", "アイデンティティ", "小さな変化"],
+    oneLiner: "習慣は目標を達成する道具ではなく、自分がどんな人間かに対する投票だ。",
+    summary:
+      "写真のページは、習慣を結果中心ではなくアイデンティティ中心に捉えよと説く。「本を読みたい」ではなく**「自分は読む人間だ」というアイデンティティを先に立てれば、行動はついてくる。**\n\n小さな行動の一つひとつが、そのアイデンティティに投じる一票だ。一票で当選はしないが、**票が積み重なれば自分を信じる証拠になる。** だから完璧な一日より「途切れさせないこと」が大事だ。",
+    keyPoints: [
+      "目標（結果）→ 過程 → **アイデンティティ**の順に進むほど変化は長続きする。",
+      "**すべての行動はアイデンティティへの投票だ。** 多数決であって全会一致ではない。",
+      "「二度続けてサボらない」というルールは完璧主義より実用的だ。",
+    ],
+    quotes: [{ text: "あなたのすべての行動は、あなたがなりたい人物に投じる一票だ。", note: "写真の中の文" }],
+  },
+];
+
+export function demoMemosFor(lang: Lang): Memo[] {
+  return lang === "en" ? DEMO_MEMOS_EN : lang === "ja" ? DEMO_MEMOS_JA : DEMO_MEMOS;
 }
-function save(memos: Memo[]) {
+
+/* ---------- 브라우저 저장소 ----------
+ * saved  : 사용자가 만든(또는 고친) 메모. localStorage 에 저장.
+ * 예시    : 언어별 세트를 그때그때 합친다. 지우면 hidden 에 id 가 기록된다 ("*" 는 전부).
+ */
+const SAVED_KEY = "memo-saved-v2";
+const HIDDEN_KEY = "memo-demo-hidden";
+const LEGACY_KEY = "memo-demo-v1";
+
+function readJson<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(memos));
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function writeJson(key: string, value: unknown) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
     /* 용량 초과 등은 무시 */
   }
 }
+function loadSaved(): Memo[] {
+  const saved = readJson<Memo[] | null>(SAVED_KEY, null);
+  if (saved) return saved;
+  // 이전 버전 저장소: 예시가 아닌 것만 옮긴다
+  const legacy = readJson<Memo[]>(LEGACY_KEY, []).filter((m) => m.model !== "demo");
+  if (legacy.length) writeJson(SAVED_KEY, legacy);
+  return legacy;
+}
+function loadHidden(): string[] | "*" {
+  return readJson<string[] | "*">(HIDDEN_KEY, []);
+}
+function examples(lang: Lang): Memo[] {
+  const hidden = loadHidden();
+  if (hidden === "*") return [];
+  return demoMemosFor(lang).filter((m) => !hidden.includes(m.id));
+}
+function all(lang: Lang): Memo[] {
+  const saved = loadSaved();
+  const ids = new Set(saved.map((m) => m.id));
+  return [...saved, ...examples(lang).filter((m) => !ids.has(m.id))];
+}
 
 export const demoStore = {
-  list: (): Memo[] => load().slice().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
-  get: (id: string): Memo | null => load().find((m) => m.id === id) ?? null,
-  patch(id: string, p: Partial<Memo>): Memo | null {
-    const all = load();
-    const i = all.findIndex((m) => m.id === id);
-    if (i < 0) return null;
-    all[i] = { ...all[i], ...p, id, updatedAt: new Date().toISOString() };
-    save(all);
-    return all[i];
-  },
-  remove(id: string) {
-    save(load().filter((m) => m.id !== id));
-  },
+  list: (lang: Lang): Memo[] => all(lang).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+  get: (id: string, lang: Lang): Memo | null => all(lang).find((m) => m.id === id) ?? null,
   add(memo: Memo) {
-    const all = load();
-    all.push(memo);
-    save(all);
+    const saved = loadSaved();
+    saved.push(memo);
+    writeJson(SAVED_KEY, saved);
   },
-  reset() {
-    save(DEMO_MEMOS);
+  patch(id: string, p: Partial<Memo>, lang: Lang): Memo | null {
+    const saved = loadSaved();
+    const i = saved.findIndex((m) => m.id === id);
+    if (i >= 0) {
+      saved[i] = { ...saved[i], ...p, id, updatedAt: new Date().toISOString() };
+      writeJson(SAVED_KEY, saved);
+      return saved[i];
+    }
+    const ex = examples(lang).find((m) => m.id === id);
+    if (!ex) return null;
+    const copy: Memo = { ...ex, ...p, id, updatedAt: new Date().toISOString() };
+    saved.push(copy);
+    writeJson(SAVED_KEY, saved);
+    return copy;
+  },
+  remove(id: string, lang: Lang) {
+    writeJson(SAVED_KEY, loadSaved().filter((m) => m.id !== id));
+    if (demoMemosFor(lang).some((m) => m.id === id)) {
+      const hidden = loadHidden();
+      if (hidden !== "*") writeJson(HIDDEN_KEY, [...hidden, id]);
+    }
   },
   /** 예시 메모만 지운다 (실제 요약한 메모는 남긴다) */
-  clearExamples(): number {
-    const all = load();
-    const kept = all.filter((m) => m.model !== "demo");
-    save(kept);
-    return all.length - kept.length;
+  clearExamples(lang: Lang): number {
+    const n = examples(lang).length + loadSaved().filter((m) => m.model === "demo").length;
+    writeJson(HIDDEN_KEY, "*");
+    writeJson(SAVED_KEY, loadSaved().filter((m) => m.model !== "demo"));
+    return n;
   },
-  exportAll(): string {
-    return JSON.stringify({ app: "memo", version: 1, exportedAt: new Date().toISOString(), memos: load() }, null, 2);
+  exportAll(lang: Lang): string {
+    return JSON.stringify({ app: "memo", version: 1, exportedAt: new Date().toISOString(), memos: all(lang) }, null, 2);
   },
-  importAll(incoming: Memo[]): { added: number; skipped: number } {
-    const all = load();
-    const have = new Set(all.map((m) => m.id));
+  importAll(incoming: Memo[], lang: Lang): { added: number; skipped: number } {
+    const saved = loadSaved();
+    const have = new Set(all(lang).map((m) => m.id));
     let added = 0;
     let skipped = 0;
     for (const m of incoming) {
@@ -220,11 +376,11 @@ export const demoStore = {
         src.image = src.imageData;
         delete src.imageData;
       }
-      all.push({ ...m, source: src });
+      saved.push({ ...m, source: src });
       have.add(m.id);
       added++;
     }
-    save(all);
+    writeJson(SAVED_KEY, saved);
     return { added, skipped };
   },
 };
@@ -249,32 +405,22 @@ export async function demoCapture(req: CaptureRequest, emit: (e: CaptureEvent) =
     if (duplicate) emit({ type: "duplicate", memo });
     return memo;
   }
-  const stages: Record<MemoKind, [string, string][]> = {
-    youtube: [
-      ["source", "영상 정보 확인"],
-      ["transcript", "자막 수집"],
-      ["summarize", "자막 읽고 요약 작성"],
-      ["save", "분야 분류 및 저장"],
-    ],
-    book: [
-      ["search", "책 정보 검색"],
-      ["summarize", "핵심 내용 요약 · 명문장 발췌"],
-      ["save", "분야 분류 및 저장"],
-    ],
-    photo: [
-      ["upload", "사진 저장"],
-      ["summarize", "사진 읽고 요약 작성"],
-      ["save", "분야 분류 및 저장"],
-    ],
+  const lang: Lang = req.lang ?? "ko";
+  const stages: Record<MemoKind, string[]> = {
+    youtube: ["source", "transcript", "summarize-transcript", "save"],
+    book: ["search", "summarize-book", "save"],
+    photo: ["upload", "summarize-photo", "save"],
   };
-  for (const [id, label] of stages[req.kind]) {
-    emit({ type: "stage", id, label });
-    await sleep(id === "summarize" ? 1600 : 700, signal);
+  for (const id of stages[req.kind]) {
+    emit({ type: "stage", id, label: id });
+    await sleep(id.startsWith("summarize") ? 1600 : 700, signal);
   }
-  const template = DEMO_MEMOS.find((m) => m.kind === req.kind) ?? DEMO_MEMOS[0];
+  const set = demoMemosFor(lang);
+  const template = set.find((m) => m.kind === req.kind) ?? set[0];
   const now = new Date().toISOString();
+  const notice = { ko: "(데모 모드라 실제 요약이 아니라 예시 문장을 보여준다. Claude 를 연결하면 실제 내용이 들어온다.)", en: "(Demo mode: this is sample text, not a real summary. Connect Claude to get the real thing.)", ja: "(デモモードのため実際の要約ではなくサンプル文を表示している。Claudeを接続すると実際の内容になる。)" }[lang];
   if (req.replace) {
-    const updated = demoStore.patch(req.replace, { summary: `(데모: ${new Date().toLocaleTimeString("ko-KR")} 에 다시 요약한 것처럼 보이지만 예시 문장이다.)\n\n${template.summary}`, keyPoints: template.keyPoints, quotes: template.quotes });
+    const updated = demoStore.patch(req.replace, { summary: `${notice}\n\n${template.summary}`, keyPoints: template.keyPoints, quotes: template.quotes }, lang);
     if (!updated) throw new Error("메모를 찾을 수 없습니다.");
     return updated;
   }
@@ -284,19 +430,17 @@ export async function demoCapture(req: CaptureRequest, emit: (e: CaptureEvent) =
     id: `demo-${Date.now().toString(36)}`,
     createdAt: now,
     updatedAt: now,
-    title: req.kind === "book" && input ? input : req.kind === "youtube" ? `${template.title} (데모)` : req.note?.trim() ? `${req.note.trim()} — 사진 메모` : template.title,
+    title: req.kind === "book" && input ? input : req.kind === "youtube" ? `${template.title} (demo)` : req.note?.trim() ? `${req.note.trim()} — ${template.title}` : template.title,
     source:
       req.kind === "photo"
         ? { image: req.image ?? template.source.image, note: req.note?.trim() || undefined }
         : req.kind === "youtube"
           ? { ...template.source, url: input }
           : { query: input },
-    summary: `(데모 모드라 실제 요약이 아니라 예시 문장을 보여준다. Claude API 키를 넣고 로컬에서 실행하면 실제 내용이 들어온다.)\n\n${template.summary}`,
+    summary: `${notice}\n\n${template.summary}`,
     confidence: "low",
     model: "demo",
   };
-  const all = load();
-  all.push(memo);
-  save(all);
+  demoStore.add(memo);
   return memo;
 }

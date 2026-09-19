@@ -1,6 +1,7 @@
 export type MemoKind = "youtube" | "book" | "photo";
 
 export type CategoryId =
+  | "work"
   | "business"
   | "self"
   | "humanities"
@@ -82,4 +83,6 @@ export interface CaptureRequest {
   image?: string;
   /** 기존 메모를 다시 요약해 내용을 교체할 때 그 메모의 id */
   replace?: string;
+  /** 요약을 쓸 언어 (UI 언어를 따른다) */
+  lang?: "ko" | "en" | "ja";
 }

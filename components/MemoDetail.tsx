@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CATEGORIES, categoryOf } from "@/lib/categories";
-import { formatDate, KIND_LABEL, memoToMarkdown } from "@/lib/format";
+import { formatDate, kindLabel, memoToMarkdown } from "@/lib/format";
 import { renderInline, renderRich } from "@/lib/richtext";
 import type { CategoryId, Memo } from "@/lib/types";
 import { DEMO, demoCapture, demoStore, imageSrc } from "@/lib/demo";
@@ -16,19 +16,18 @@ import { IconArrowLeft, IconCheck, IconCopy, IconEdit, IconLink, IconPlay, IconR
 
 export function MemoDetail({ id }: { id: string }) {
   const router = useRouter();
-  const { memos, loading, upsert, remove, patch, toast } = useMemos();
+  const { memos, loading, upsert, remove, patch, toast, lang, t } = useMemos();
   const [fetched, setFetched] = useState<Memo | null | undefined>(undefined);
   const memo = memos.find((m) => m.id === id) ?? fetched ?? null;
   const [editTitle, setEditTitle] = useState<string | null>(null);
   const [editTags, setEditTags] = useState<string | null>(null);
-  const [redo, setRedo] = useState<{ label: string } | null>(null);
+  const [redo, setRedo] = useState<{ stage: string } | null>(null);
   const redoAbort = useRef<AbortController | null>(null);
 
-  // 새로고침으로 바로 들어온 경우 목록보다 먼저 한 장만 가져온다
   useEffect(() => {
     if (memos.some((m) => m.id === id)) return;
     if (DEMO) {
-      setFetched(demoStore.get(id));
+      setFetched(demoStore.get(id, lang));
       return;
     }
     let alive = true;
@@ -43,15 +42,15 @@ export function MemoDetail({ id }: { id: string }) {
     return () => {
       alive = false;
     };
-  }, [id, memos, upsert]);
+  }, [id, memos, upsert, lang]);
 
   if (!memo) {
-    if (loading || fetched === undefined) return <div className="notfound">불러오는 중…</div>;
+    if (loading || fetched === undefined) return <div className="notfound">{t("detail.loading")}</div>;
     return (
       <div className="notfound">
-        <p>메모를 찾을 수 없어요.</p>
+        <p>{t("detail.notFound")}</p>
         <Link href="/" className="btn">
-          <IconArrowLeft /> 목록으로
+          <IconArrowLeft /> {t("detail.back")}
         </Link>
       </div>
     );
@@ -61,58 +60,58 @@ export function MemoDetail({ id }: { id: string }) {
   const c = { "--c": `light-dark(${cat.color}, ${cat.dark})` } as React.CSSProperties;
 
   const onDelete = async () => {
-    if (!window.confirm("이 메모를 삭제할까요? 되돌릴 수 없어요.")) return;
+    if (!window.confirm(t("detail.deleteConfirm"))) return;
     await remove(memo.id);
-    toast("삭제했어요");
+    toast(t("detail.deleted"));
     router.push("/");
   };
   const onCopy = async () => {
     try {
-      await navigator.clipboard.writeText(memoToMarkdown(memo));
-      toast("마크다운으로 복사했어요");
+      await navigator.clipboard.writeText(memoToMarkdown(memo, lang));
+      toast(t("detail.copied"));
     } catch {
-      toast("복사에 실패했어요");
+      toast(t("detail.copyFailed"));
     }
   };
   const saveTitle = async () => {
-    const t = (editTitle ?? "").trim();
+    const v = (editTitle ?? "").trim();
     setEditTitle(null);
-    if (!t || t === memo.title) return;
-    const ok = await patch(memo.id, { title: t });
-    toast(ok ? "제목을 바꿨어요" : "저장하지 못했어요");
+    if (!v || v === memo.title) return;
+    const ok = await patch(memo.id, { title: v });
+    toast(ok ? t("detail.titleChanged") : t("detail.saveFailed"));
   };
   const saveTags = async () => {
     const tags = (editTags ?? "")
-      .split(/[,\s#]+/)
-      .map((t) => t.trim())
+      .split(/[,、\s#]+/)
+      .map((x) => x.trim())
       .filter(Boolean)
       .slice(0, 12);
     setEditTags(null);
     if (tags.join("|") === memo.tags.join("|")) return;
     const ok = await patch(memo.id, { tags });
-    toast(ok ? "태그를 바꿨어요" : "저장하지 못했어요");
+    toast(ok ? t("detail.tagsChanged") : t("detail.saveFailed"));
   };
   const onRedo = async () => {
     if (redo) return;
-    if (!window.confirm("지금 요약을 버리고 처음부터 다시 요약할까요? 제목·태그·분야도 새로 정해져요.")) return;
+    if (!window.confirm(t("detail.redoConfirm"))) return;
     const ctrl = new AbortController();
     redoAbort.current = ctrl;
-    setRedo({ label: "준비 중" });
+    setRedo({ stage: "" });
     try {
       if (DEMO) {
-        const updated = await demoCapture({ kind: memo.kind, replace: memo.id }, (ev) => ev.type === "stage" && setRedo({ label: ev.label }), ctrl.signal);
+        const updated = await demoCapture({ kind: memo.kind, replace: memo.id, lang }, (ev) => ev.type === "stage" && setRedo({ stage: ev.id }), ctrl.signal);
         upsert(updated);
       } else {
         await captureStream(
-          { kind: memo.kind, replace: memo.id },
+          { kind: memo.kind, replace: memo.id, lang },
           (ev) => {
-            if (ev.type === "stage") setRedo({ label: ev.label });
+            if (ev.type === "stage") setRedo({ stage: ev.id });
             else if (ev.type === "done") upsert(ev.memo);
           },
           ctrl.signal,
         );
       }
-      toast("다시 요약했어요");
+      toast(t("detail.redoDone"));
     } catch (e) {
       if ((e as Error).name !== "AbortError") toast(DEMO ? friendlyError(e) : (e as Error).message);
     } finally {
@@ -123,7 +122,7 @@ export function MemoDetail({ id }: { id: string }) {
   const onCategory = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const next = e.target.value as CategoryId;
     const ok = await patch(memo.id, { category: next });
-    toast(ok ? `분야를 '${categoryOf(next).label}'(으)로 바꿨어요` : "저장하지 못했어요");
+    toast(ok ? t("detail.categoryChanged", { name: categoryOf(next).label[lang] }) : t("detail.saveFailed"));
   };
 
   const sourceBits: React.ReactNode[] = [];
@@ -131,35 +130,35 @@ export function MemoDetail({ id }: { id: string }) {
     if (memo.meta.author) sourceBits.push(<span key="a">{memo.meta.author}</span>);
     if (memo.meta.publisher) sourceBits.push(<span key="p">{memo.meta.publisher}</span>);
     if (memo.meta.year) sourceBits.push(<span key="y">{memo.meta.year}</span>);
-    if (!sourceBits.length && memo.source.query) sourceBits.push(<span key="q">검색어 “{memo.source.query}”</span>);
+    if (!sourceBits.length && memo.source.query) sourceBits.push(<span key="q">{t("detail.query", { q: memo.source.query })}</span>);
   } else if (memo.kind === "youtube") {
     if (memo.meta.channel) sourceBits.push(<span key="ch">{memo.meta.channel}</span>);
     if (memo.meta.author && memo.meta.author !== memo.meta.channel) sourceBits.push(<span key="a">{memo.meta.author}</span>);
     if (memo.source.url)
       sourceBits.push(
         <a key="u" href={memo.source.url} target="_blank" rel="noreferrer">
-          <IconLink /> 영상 보기
+          <IconLink /> {t("detail.watch")}
         </a>,
       );
   } else if (memo.source.note) {
-    sourceBits.push(<span key="n">내 메모: {memo.source.note}</span>);
+    sourceBits.push(<span key="n">{t("detail.myNote", { note: memo.source.note })}</span>);
   }
 
   return (
     <article className="article">
       <div className="article-bar">
         <Link href="/" className="btn ghost sm">
-          <IconArrowLeft size={15} /> 목록으로
+          <IconArrowLeft size={15} /> {t("detail.back")}
         </Link>
         <div className="article-actions">
-          <button className="btn ghost sm" onClick={onRedo} disabled={Boolean(redo)} title="같은 원본으로 요약을 새로 만듭니다">
-            <IconRefresh size={15} className={redo ? "spin" : undefined} /> 다시 요약
+          <button className="btn ghost sm" onClick={onRedo} disabled={Boolean(redo)} title={t("detail.redoTitle")}>
+            <IconRefresh size={15} className={redo ? "spin" : undefined} /> {t("detail.redo")}
           </button>
           <button className="btn ghost sm" onClick={onCopy}>
-            <IconCopy size={15} /> 복사
+            <IconCopy size={15} /> {t("detail.copy")}
           </button>
           <button className="btn ghost sm danger" onClick={onDelete}>
-            <IconTrash size={15} /> 삭제
+            <IconTrash size={15} /> {t("detail.delete")}
           </button>
         </div>
       </div>
@@ -167,29 +166,29 @@ export function MemoDetail({ id }: { id: string }) {
       <div className="article-meta">
         <span className="kind">
           <KindIcon kind={memo.kind} size={14} />
-          {KIND_LABEL[memo.kind]}
+          {kindLabel(memo.kind, lang)}
         </span>
-        <select className="select-chip" style={c} value={memo.category} onChange={onCategory} aria-label="분야 바꾸기">
+        <select className="select-chip" style={c} value={memo.category} onChange={onCategory} aria-label={t("detail.changeCategory")}>
           {CATEGORIES.map((k) => (
             <option key={k.id} value={k.id}>
-              {k.label}
+              {k.label[lang]}
             </option>
           ))}
         </select>
-        <time dateTime={memo.createdAt}>{formatDate(memo.createdAt)}</time>
+        <time dateTime={memo.createdAt}>{formatDate(memo.createdAt, lang)}</time>
       </div>
 
       {redo && (
         <div className="redo-bar" role="status">
-          <span className="ring sm" /> {redo.label}…
+          <span className="ring sm" /> {redo.stage ? t(`stage.${redo.stage}`) : t("detail.preparing")}…
           <button className="btn ghost sm" onClick={() => redoAbort.current?.abort()}>
-            취소
+            {t("detail.cancel")}
           </button>
         </div>
       )}
 
       {editTitle === null ? (
-        <h1 className="editable" onClick={() => setEditTitle(memo.title)} title="눌러서 제목 고치기">
+        <h1 className="editable" onClick={() => setEditTitle(memo.title)} title={t("detail.editTitle")}>
           {memo.title}
           <IconEdit size={16} className="edit-hint" />
         </h1>
@@ -203,12 +202,11 @@ export function MemoDetail({ id }: { id: string }) {
               if (e.key === "Enter" && !e.nativeEvent.isComposing) void saveTitle();
               if (e.key === "Escape") setEditTitle(null);
             }}
-            aria-label="제목"
           />
           <button className="btn sm primary" onClick={() => void saveTitle()}>
-            <IconCheck /> 저장
+            <IconCheck /> {t("detail.save")}
           </button>
-          <button className="btn ghost sm" onClick={() => setEditTitle(null)} aria-label="취소">
+          <button className="btn ghost sm" onClick={() => setEditTitle(null)} aria-label={t("detail.cancel")}>
             <IconX />
           </button>
         </div>
@@ -252,13 +250,13 @@ export function MemoDetail({ id }: { id: string }) {
       <div className="callout">{memo.oneLiner}</div>
 
       <section className="section">
-        <div className="section-label">핵심 요약</div>
+        <div className="section-label">{t("detail.summary")}</div>
         <div className="prose">{renderRich(memo.summary)}</div>
       </section>
 
       {memo.keyPoints.length > 0 && (
         <section className="section">
-          <div className="section-label">주요 포인트</div>
+          <div className="section-label">{t("detail.points")}</div>
           <ol className="points">
             {memo.keyPoints.map((p, i) => (
               <li key={i}>
@@ -271,7 +269,7 @@ export function MemoDetail({ id }: { id: string }) {
 
       {memo.quotes.length > 0 && (
         <section className="section">
-          <div className="section-label">{memo.kind === "book" ? "명대사 · 명문장" : memo.kind === "youtube" ? "인상적인 말" : "사진 속 문장"}</div>
+          <div className="section-label">{t(`detail.quotes.${memo.kind}`)}</div>
           <div className="quotes">
             {memo.quotes.map((q, i) => (
               <blockquote key={i} className="quote">
@@ -285,23 +283,23 @@ export function MemoDetail({ id }: { id: string }) {
 
       <section className="section">
         <div className="section-label">
-          태그
+          {t("detail.tags")}
           {editTags === null && (
             <button className="link-btn" onClick={() => setEditTags(memo.tags.join(", "))}>
-              <IconEdit size={12} /> 편집
+              <IconEdit size={12} /> {t("detail.edit")}
             </button>
           )}
         </div>
         {editTags === null ? (
           <div className="tags-row">
             {memo.tags.length ? (
-              memo.tags.map((t) => (
-                <span key={t} className="tag">
-                  {t}
+              memo.tags.map((x) => (
+                <span key={x} className="tag">
+                  {x}
                 </span>
               ))
             ) : (
-              <span className="muted">태그가 없어요</span>
+              <span className="muted">{t("detail.noTags")}</span>
             )}
           </div>
         ) : (
@@ -309,18 +307,17 @@ export function MemoDetail({ id }: { id: string }) {
             <input
               autoFocus
               value={editTags}
-              placeholder="쉼표로 구분 (예: 습관, 집중)"
+              placeholder={t("detail.tagsPlaceholder")}
               onChange={(e) => setEditTags(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.nativeEvent.isComposing) void saveTags();
                 if (e.key === "Escape") setEditTags(null);
               }}
-              aria-label="태그"
             />
             <button className="btn sm primary" onClick={() => void saveTags()}>
-              <IconCheck /> 저장
+              <IconCheck /> {t("detail.save")}
             </button>
-            <button className="btn ghost sm" onClick={() => setEditTags(null)} aria-label="취소">
+            <button className="btn ghost sm" onClick={() => setEditTags(null)} aria-label={t("detail.cancel")}>
               <IconX />
             </button>
           </div>
@@ -329,10 +326,10 @@ export function MemoDetail({ id }: { id: string }) {
 
       <footer className="footnote">
         <span className={`confidence ${memo.confidence}`}>
-          <i /> {memo.confidence === "high" ? "원문을 직접 읽고 정리" : memo.confidence === "medium" ? "검색 자료를 바탕으로 정리" : "확인이 부족한 내용 포함"}
-          {memo.kind === "youtube" && memo.source.transcript === false && " · 자막 없음"}
+          <i /> {t(`detail.conf.${memo.confidence}`)}
+          {memo.kind === "youtube" && memo.source.transcript === false && ` · ${t("detail.noTranscript")}`}
         </span>
-        <span>{memo.model && memo.model !== "demo" ? `Claude ${memo.model}` : DEMO ? "예시 메모" : ""}</span>
+        <span>{memo.model && memo.model !== "demo" ? `Claude ${memo.model}` : DEMO ? t("detail.example") : ""}</span>
       </footer>
     </article>
   );

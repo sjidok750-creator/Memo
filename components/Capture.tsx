@@ -11,36 +11,32 @@ import type { CaptureRequest, MemoKind } from "@/lib/types";
 import { useMemos } from "./MemoProvider";
 import { IconArrowRight, IconBook, IconCheck, IconImage, IconPlay, IconX } from "./Icons";
 
-interface Stage {
-  id: string;
-  label: string;
-}
-
-/** 종류별로 예상되는 단계 (서버가 보내는 stage 이벤트로 실제 라벨이 덮어써진다) */
-const EXPECTED: Record<MemoKind, Stage[]> = {
-  youtube: [
-    { id: "source", label: "영상 정보 확인" },
-    { id: "transcript", label: "자막 수집" },
-    { id: "summarize", label: "요약 작성" },
-    { id: "save", label: "분야 분류 및 저장" },
-  ],
-  book: [
-    { id: "search", label: "책 정보 검색" },
-    { id: "summarize", label: "핵심 내용 요약 · 명문장 발췌" },
-    { id: "save", label: "분야 분류 및 저장" },
-  ],
-  photo: [
-    { id: "upload", label: "사진 저장" },
-    { id: "summarize", label: "사진 읽고 요약 작성" },
-    { id: "save", label: "분야 분류 및 저장" },
-  ],
+/** 종류별 예상 단계 (서버가 보내는 stage id 로 실제 진행이 표시된다) */
+const EXPECTED: Record<MemoKind, string[]> = {
+  youtube: ["source", "transcript", "summarize", "save"],
+  book: ["search", "summarize", "save"],
+  photo: ["upload", "summarize", "save"],
 };
+
+/** 서버 stage id → 화면에 놓을 자리 */
+const SLOT: Record<string, string> = {
+  "transcript-web": "transcript",
+  "summarize-transcript": "summarize",
+  "summarize-web": "summarize",
+  "summarize-book": "summarize",
+  "summarize-photo": "summarize",
+};
+
+interface Stage {
+  slot: string;
+  id: string;
+}
 
 type Phase = { name: "idle" } | { name: "busy"; kind: MemoKind; label: string; stages: Stage[]; current: string; startedAt: number } | { name: "error"; message: string };
 
 export function Capture() {
   const router = useRouter();
-  const { upsert, health, toast } = useMemos();
+  const { upsert, health, toast, lang, t } = useMemos();
   const [text, setText] = useState("");
   const [note, setNote] = useState("");
   const [image, setImage] = useState<{ dataUrl: string; name: string } | null>(null);
@@ -59,14 +55,12 @@ export function Capture() {
     setTouch(window.matchMedia("(pointer: coarse)").matches);
   }, []);
 
-  // 경과 시간 표시
   useEffect(() => {
     if (!busy) return;
-    const t = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(t);
+    const tm = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(tm);
   }, [busy]);
 
-  // 텍스트 영역 높이 자동 조절
   useEffect(() => {
     const el = textRef.current;
     if (!el) return;
@@ -78,7 +72,7 @@ export function Capture() {
     async (file: File | undefined) => {
       if (!file) return;
       if (!file.type.startsWith("image/")) {
-        setPhase({ name: "error", message: "이미지 파일만 넣을 수 있어요 (JPG, PNG, WEBP, GIF)." });
+        setPhase({ name: "error", message: t("capture.onlyImages") });
         return;
       }
       try {
@@ -89,10 +83,9 @@ export function Capture() {
         setPhase({ name: "error", message: (e as Error).message });
       }
     },
-    [],
+    [t],
   );
 
-  // 페이지 어디에나 떨어뜨려도 받도록
   useEffect(() => {
     let depth = 0;
     const enter = (e: DragEvent) => {
@@ -128,25 +121,46 @@ export function Capture() {
 
   const canSubmit = image ? true : detected.kind === "youtube" || detected.kind === "book";
 
+  const onStage = useCallback((id: string) => {
+    const slot = SLOT[id] ?? id;
+    setPhase((p) => {
+      if (p.name !== "busy") return p;
+      const stages = p.stages.some((s) => s.slot === slot) ? p.stages.map((s) => (s.slot === slot ? { slot, id } : s)) : [...p.stages, { slot, id }];
+      return { ...p, current: slot, stages };
+    });
+  }, []);
+
+  const finish = useCallback(
+    (memoId: string, msg: string) => {
+      setText("");
+      setNote("");
+      setImage(null);
+      setPhase({ name: "idle" });
+      toast(msg);
+      router.push(memoHref(memoId));
+    },
+    [router, toast],
+  );
+
   const submit = useCallback(async () => {
     if (busy || !canSubmit) return;
     let req: CaptureRequest;
     let label: string;
     if (image) {
-      req = { kind: "photo", image: image.dataUrl, note: note.trim() || undefined };
+      req = { kind: "photo", image: image.dataUrl, note: note.trim() || undefined, lang };
       label = image.name;
     } else if (detected.kind === "youtube") {
-      req = { kind: "youtube", input: text.trim() };
+      req = { kind: "youtube", input: text.trim(), lang };
       label = text.trim();
     } else if (detected.kind === "book") {
-      req = { kind: "book", input: text.trim() };
+      req = { kind: "book", input: text.trim(), lang };
       label = text.trim();
     } else return;
 
-    const stages = EXPECTED[req.kind];
     const ctrl = new AbortController();
     abortRef.current = ctrl;
-    setPhase({ name: "busy", kind: req.kind, label, stages, current: stages[0].id, startedAt: Date.now() });
+    const stages = EXPECTED[req.kind].map((slot) => ({ slot, id: slot }));
+    setPhase({ name: "busy", kind: req.kind, label, stages, current: stages[0].slot, startedAt: Date.now() });
     setNow(Date.now());
 
     try {
@@ -155,47 +169,23 @@ export function Capture() {
         const memo = await demoCapture(
           req,
           (ev) => {
-            if (ev.type === "stage") {
-              setPhase((p) =>
-                p.name === "busy"
-                  ? { ...p, current: ev.id, stages: p.stages.some((s) => s.id === ev.id) ? p.stages.map((s) => (s.id === ev.id ? { ...s, label: ev.label } : s)) : [...p.stages, { id: ev.id, label: ev.label }] }
-                  : p,
-              );
-            } else if (ev.type === "duplicate") dup = true;
+            if (ev.type === "stage") onStage(ev.id);
+            else if (ev.type === "duplicate") dup = true;
           },
           ctrl.signal,
         );
         upsert(memo);
-        setText("");
-        setNote("");
-        setImage(null);
-        setPhase({ name: "idle" });
-        toast(dup ? "이미 저장된 영상이에요" : health?.mock ? "메모를 저장했어요 (예시)" : "메모를 저장했어요");
-        router.push(memoHref(memo.id));
+        finish(memo.id, dup ? t("capture.duplicate") : health?.mock ? t("capture.savedExample") : t("capture.saved"));
         return;
       }
       await captureStream(
         req,
         (ev) => {
-          if (ev.type === "stage") {
-            setPhase((p) =>
-              p.name === "busy"
-                ? { ...p, current: ev.id, stages: p.stages.some((s) => s.id === ev.id) ? p.stages.map((s) => (s.id === ev.id ? { ...s, label: ev.label } : s)) : [...p.stages, { id: ev.id, label: ev.label }] }
-                : p,
-            );
-          } else if (ev.type === "done") {
+          if (ev.type === "stage") onStage(ev.id);
+          else if (ev.type === "done") {
             upsert(ev.memo);
-            setText("");
-            setNote("");
-            setImage(null);
-            setPhase({ name: "idle" });
-            toast("메모를 저장했어요");
-            router.push(memoHref(ev.memo.id));
-          } else if (ev.type === "duplicate") {
-            setPhase({ name: "idle" });
-            toast("이미 저장된 영상이에요");
-            router.push(memoHref(ev.memo.id));
-          }
+            finish(ev.memo.id, t("capture.saved"));
+          } else if (ev.type === "duplicate") finish(ev.memo.id, t("capture.duplicate"));
         },
         ctrl.signal,
       );
@@ -205,7 +195,7 @@ export function Capture() {
     } finally {
       abortRef.current = null;
     }
-  }, [busy, canSubmit, image, note, detected, text, upsert, toast, router]);
+  }, [busy, canSubmit, image, note, detected, text, lang, upsert, finish, onStage, health, t]);
 
   const cancel = () => abortRef.current?.abort();
 
@@ -224,36 +214,34 @@ export function Capture() {
     }
   };
 
-  /* ---------- 진행 중 화면 ---------- */
   if (phase.name === "busy") {
     const elapsed = Math.max(0, Math.round((now - phase.startedAt) / 1000));
-    const idx = phase.stages.findIndex((s) => s.id === phase.current);
-    const kindLabel = { youtube: "영상을", book: "책을", photo: "사진을" }[phase.kind];
+    const idx = phase.stages.findIndex((s) => s.slot === phase.current);
     return (
       <section className="capture" aria-live="polite">
         <div className="progress">
           <div className="ring" />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="progress-title">
-              {kindLabel} 읽고 있어요
-              <span className="elapsed">{elapsed}초</span>
+              {t(`capture.reading.${phase.kind}`)}
+              <span className="elapsed">{t("capture.elapsed", { n: elapsed })}</span>
             </div>
             <div className="progress-input">{phase.label}</div>
             <ul className="stages">
               {phase.stages.map((s, i) => {
                 const state = i < idx ? "done" : i === idx ? "active" : "";
                 return (
-                  <li key={s.id} className={`stage ${state}`}>
+                  <li key={s.slot} className={`stage ${state}`}>
                     <span className="mark">{state === "done" ? <IconCheck /> : null}</span>
-                    {s.label}
+                    {t(`stage.${s.id}`)}
                   </li>
                 );
               })}
             </ul>
             <div className="progress-foot">
-              <span>{elapsed > 25 ? "긴 내용은 1~2분쯤 걸릴 수 있어요." : "Claude 가 내용을 읽고 핵심을 고르는 중입니다."}</span>
+              <span>{elapsed > 25 ? t("capture.tipLong") : t("capture.tipShort")}</span>
               <button className="btn ghost sm" onClick={cancel}>
-                취소
+                {t("capture.cancel")}
               </button>
             </div>
           </div>
@@ -262,8 +250,7 @@ export function Capture() {
     );
   }
 
-  /* ---------- 입력 화면 ---------- */
-  const placeholder = image ? "이 사진에 대해 메모하고 싶은 것 (선택)" : "유튜브 링크를 붙여넣거나, 책 제목을 적거나, 사진을 끌어다 놓으세요";
+  const placeholder = image ? t("capture.notePlaceholder") : t("capture.placeholder");
 
   return (
     <section className={`capture ${drag ? "drag" : ""}`}>
@@ -272,10 +259,10 @@ export function Capture() {
           {image ? (
             <div className="attach">
               <div className="attach-thumb">
-                <img src={image.dataUrl} alt="첨부한 사진" />
+                <img src={image.dataUrl} alt="" />
                 <button
                   className="attach-remove"
-                  aria-label="사진 제거"
+                  aria-label={t("capture.removePhoto")}
                   onClick={(e) => {
                     e.stopPropagation();
                     setImage(null);
@@ -286,52 +273,34 @@ export function Capture() {
               </div>
               <div className="attach-body">
                 <span className="attach-name">{image.name}</span>
-                <textarea
-                  className="note"
-                  rows={2}
-                  placeholder={placeholder}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  onKeyDown={onKey}
-                  onPaste={onPaste}
-                  autoFocus
-                />
+                <textarea className="note" rows={2} placeholder={placeholder} value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={onKey} onPaste={onPaste} autoFocus />
               </div>
             </div>
           ) : (
-            <textarea
-              ref={textRef}
-              rows={1}
-              placeholder={placeholder}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={onKey}
-              onPaste={onPaste}
-              aria-label="유튜브 링크 또는 책 제목"
-            />
+            <textarea ref={textRef} rows={1} placeholder={placeholder} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} onPaste={onPaste} aria-label={t("capture.placeholder")} />
           )}
           <button className="btn primary" onClick={submit} disabled={!canSubmit || health?.apiKey === false}>
-            요약하기 <IconArrowRight size={15} />
+            {t("capture.submit")} <IconArrowRight size={15} />
           </button>
         </div>
         <div className="capture-meta">
-          <Detect detected={detected} image={Boolean(image)} />
+          <Detect kind={image ? "photo" : detected.kind} />
           <span className="kbd">
-            <kbd>Enter</kbd> 로 요약
+            <kbd>Enter</kbd> {t("capture.enterHint")}
           </span>
         </div>
       </div>
 
       <div className="hints">
-        <span className="label">넣을 수 있는 것</span>
+        <span className="label">{t("capture.hintsLabel")}</span>
         <button className="hint" onClick={() => textRef.current?.focus()}>
-          <IconPlay size={12} /> 유튜브 링크
+          <IconPlay size={12} /> {t("capture.hintYoutube")}
         </button>
         <button className="hint" onClick={() => textRef.current?.focus()}>
-          <IconBook size={13} /> 책 제목
+          <IconBook size={13} /> {t("capture.hintBook")}
         </button>
         <button className="hint" onClick={() => fileRef.current?.click()}>
-          <IconImage size={13} /> {touch ? "사진 선택" : "사진 (끌어다 놓기 · 붙여넣기)"}
+          <IconImage size={13} /> {touch ? t("capture.hintPhotoTouch") : t("capture.hintPhoto")}
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void acceptFile(e.target.files?.[0])} />
       </div>
@@ -342,43 +311,44 @@ export function Capture() {
           <span className="error-actions">
             {canSubmit && (
               <button className="btn sm" onClick={() => void submit()}>
-                다시 시도
+                {t("capture.retry")}
               </button>
             )}
-            <button className="btn ghost sm" onClick={() => setPhase({ name: "idle" })} aria-label="닫기">
+            <button className="btn ghost sm" onClick={() => setPhase({ name: "idle" })} aria-label={t("capture.close")}>
               <IconX />
             </button>
           </span>
         </div>
       )}
-      {drag && <div className="drop-overlay">사진을 여기에 놓으세요</div>}
+      {drag && <div className="drop-overlay">{t("capture.dropHere")}</div>}
     </section>
   );
 }
 
-function Detect({ detected, image }: { detected: ReturnType<typeof detectInput>; image: boolean }) {
-  if (image)
-    return (
-      <span className="detect on">
-        <IconImage size={13} /> 사진으로 요약해요
-      </span>
-    );
-  switch (detected.kind) {
+function Detect({ kind }: { kind: "empty" | "youtube" | "book" | "unsupported-url" | "photo" }) {
+  const { t } = useMemos();
+  switch (kind) {
+    case "photo":
+      return (
+        <span className="detect on">
+          <IconImage size={13} /> {t("capture.detectPhoto")}
+        </span>
+      );
     case "youtube":
       return (
         <span className="detect on">
-          <IconPlay size={12} /> 유튜브 영상으로 알아봤어요
+          <IconPlay size={12} /> {t("capture.detectYoutube")}
         </span>
       );
     case "book":
       return (
         <span className="detect on">
-          <IconBook size={13} /> 책 제목으로 알아봤어요
+          <IconBook size={13} /> {t("capture.detectBook")}
         </span>
       );
     case "unsupported-url":
-      return <span className="detect warn">아직 유튜브 링크만 지원해요</span>;
+      return <span className="detect warn">{t("capture.detectUnsupported")}</span>;
     default:
-      return <span className="detect">무엇을 넣어도 알아서 구분해요</span>;
+      return <span className="detect">{t("capture.detectIdle")}</span>;
   }
 }

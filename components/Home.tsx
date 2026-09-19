@@ -11,16 +11,13 @@ import { useMemos } from "./MemoProvider";
 import { IconDownload, IconSearch, IconUpload } from "./Icons";
 import { DEMO, demoStore } from "@/lib/demo";
 import { Connect } from "./Connect";
+import { LangSwitch } from "./LangSwitch";
 
-const KINDS: { id: MemoKind | "all"; label: string }[] = [
-  { id: "all", label: "전체" },
-  { id: "youtube", label: "유튜브" },
-  { id: "book", label: "책" },
-  { id: "photo", label: "사진" },
-];
+const KINDS: (MemoKind | "all")[] = ["all", "youtube", "book", "photo"];
 
 export function Home() {
-  const { memos, loading, category, kind, setKind, query, setQuery, health, refresh, toast } = useMemos();
+  const { memos, loading, category, kind, setKind, query, setQuery, health, refresh, toast, lang, t } = useMemos();
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -33,17 +30,15 @@ export function Home() {
     });
   }, [memos, category, kind, query]);
 
-  const fileRef = useRef<HTMLInputElement>(null);
-
   const onExport = () => {
     if (!DEMO) {
       window.location.href = "/api/backup";
       return;
     }
-    const blob = new Blob([demoStore.exportAll()], { type: "application/json" });
+    const blob = new Blob([demoStore.exportAll(lang)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `memo-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `gist-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -51,16 +46,16 @@ export function Home() {
     if (!file) return;
     try {
       const parsed = JSON.parse(await file.text()) as { memos?: Memo[] };
-      if (!Array.isArray(parsed.memos)) throw new Error("백업 파일 형식이 아니에요");
+      if (!Array.isArray(parsed.memos)) throw new Error(t("backup.badFile"));
       let result: { added: number; skipped: number };
-      if (DEMO) result = demoStore.importAll(parsed.memos);
+      if (DEMO) result = demoStore.importAll(parsed.memos, lang);
       else {
         const res = await fetch("/api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed) });
-        if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || "가져오기에 실패했어요");
+        if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || t("backup.failed"));
         result = (await res.json()) as { added: number; skipped: number };
       }
       await refresh();
-      toast(`${result.added}개를 가져왔어요${result.skipped ? ` (이미 있는 ${result.skipped}개는 건너뜀)` : ""}`);
+      toast(t("backup.done", { added: result.added }) + (result.skipped ? t("backup.skipped", { skipped: result.skipped }) : ""));
     } catch (e) {
       toast((e as Error).message);
     } finally {
@@ -68,23 +63,29 @@ export function Home() {
     }
   };
 
-  const heading = category === "all" ? "전체 메모" : categoryOf(category).label;
+  const heading = category === "all" ? t("home.all") : categoryOf(category).label[lang];
   const hour = new Date().getHours();
-  const greet = hour < 5 ? "늦은 밤이에요" : hour < 12 ? "좋은 아침이에요" : hour < 18 ? "좋은 오후예요" : "좋은 저녁이에요";
+  const greet = hour < 5 ? t("greet.night") : hour < 12 ? t("greet.morning") : hour < 18 ? t("greet.afternoon") : t("greet.evening");
 
   return (
     <>
       <header className="home-head">
-        <div className="eyebrow">{greet}</div>
-        <h1 className="home-title">오늘은 무엇을 기억해 둘까요?</h1>
+        <div>
+          <div className="eyebrow">{greet}</div>
+          <h1 className="home-title">{t("home.title")}</h1>
+        </div>
+        <LangSwitch />
       </header>
 
       {DEMO && <Connect />}
+
       {health && !health.apiKey && (
         <div className="banner">
-          <span>
-            아직 Claude 와 연결되지 않았어요. 프로젝트 폴더에 <code>.env.local</code> 파일을 만들고 <code>ANTHROPIC_API_KEY=sk-ant-...</code> 를 넣은 뒤 서버를 다시 시작하세요.
-          </span>
+          <span
+            dangerouslySetInnerHTML={{
+              __html: t("home.needKey", { file: "<code>.env.local</code>", env: "<code>ANTHROPIC_API_KEY=sk-ant-...</code>" }),
+            }}
+          />
         </div>
       )}
 
@@ -92,17 +93,17 @@ export function Home() {
 
       <div className="toolbar">
         <h2>
-          {heading} <span className="n">{visible.length}개</span>
+          {heading} <span className="n">{t("home.count", { n: visible.length })}</span>
         </h2>
         <div className="toolbar-right">
           <label className="search">
             <IconSearch size={15} />
-            <input type="search" placeholder="제목, 내용, 태그 검색" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input type="search" placeholder={t("home.search")} value={query} onChange={(e) => setQuery(e.target.value)} />
           </label>
-          <div className="seg" role="tablist" aria-label="종류">
+          <div className="seg" role="tablist">
             {KINDS.map((k) => (
-              <button key={k.id} role="tab" aria-selected={kind === k.id} className={kind === k.id ? "on" : ""} onClick={() => setKind(k.id)}>
-                {k.label}
+              <button key={k} role="tab" aria-selected={kind === k} className={kind === k ? "on" : ""} onClick={() => setKind(k)}>
+                {k === "all" ? t("nav.all") : t(`kind.${k}`)}
               </button>
             ))}
           </div>
@@ -119,13 +120,13 @@ export function Home() {
         <div className="empty">
           {memos.length === 0 ? (
             <>
-              <strong>아직 메모가 없어요</strong>
-              위에 유튜브 링크나 책 제목을 넣어 첫 메모를 만들어 보세요. 사진은 끌어다 놓거나 붙여넣으면 됩니다.
+              <strong>{t("home.emptyTitle")}</strong>
+              {t("home.emptyBody")}
             </>
           ) : (
             <>
-              <strong>조건에 맞는 메모가 없어요</strong>
-              다른 분야나 검색어로 찾아보세요.
+              <strong>{t("home.noMatchTitle")}</strong>
+              {t("home.noMatchBody")}
             </>
           )}
         </div>
@@ -138,12 +139,12 @@ export function Home() {
       )}
 
       <div className="backup-row">
-        <span>백업</span>
+        <span>{t("backup.label")}</span>
         <button className="link-btn" onClick={onExport} disabled={memos.length === 0}>
-          <IconDownload size={13} /> JSON으로 내보내기
+          <IconDownload size={13} /> {t("backup.export")}
         </button>
         <button className="link-btn" onClick={() => fileRef.current?.click()}>
-          <IconUpload size={13} /> 백업 파일 가져오기
+          <IconUpload size={13} /> {t("backup.import")}
         </button>
         <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => void onImport(e.target.files?.[0])} />
       </div>

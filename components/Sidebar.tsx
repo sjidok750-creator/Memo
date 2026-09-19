@@ -5,10 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { CATEGORIES } from "@/lib/categories";
 import type { CategoryId } from "@/lib/types";
 import { useMemos } from "./MemoProvider";
-import { IconNote } from "./Icons";
+import { BrandMark } from "./Icons";
 
 export function Sidebar() {
-  const { memos, category, setCategory, health } = useMemos();
+  const { memos, category, setCategory, health, lang, t } = useMemos();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -25,20 +25,18 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <Link href="/" className="brand" onClick={() => setCategory("all")}>
-        <span className="brand-mark">
-          <IconNote size={17} />
-        </span>
+        <BrandMark size={34} id="side" />
         <span>
-          <div className="brand-name">나만의 메모장</div>
-          <div className="brand-sub">보고 읽은 것을 핵심만</div>
+          <div className="brand-name">Gist</div>
+          <div className="brand-sub">{t("brand.tagline")}</div>
         </span>
       </Link>
 
-      <div className="nav-title">분야</div>
-      <nav className="nav" aria-label="분야">
+      <div className="nav-title">{t("nav.fields")}</div>
+      <nav className="nav" aria-label={t("nav.fields")}>
         <button className={`nav-item ${category === "all" && pathname === "/" ? "active" : ""}`} onClick={() => pick("all")}>
           <span className="dot" style={{ "--c": "var(--accent)" } as React.CSSProperties} />
-          전체
+          {t("nav.all")}
           <span className="count">{memos.length}</span>
         </button>
         {CATEGORIES.map((c) => {
@@ -51,7 +49,7 @@ export function Sidebar() {
               style={{ "--c": `light-dark(${c.color}, ${c.dark})` } as React.CSSProperties}
             >
               <span className="dot" />
-              {c.label}
+              {c.label[lang]}
               <span className="count">{n || ""}</span>
             </button>
           );
@@ -60,16 +58,16 @@ export function Sidebar() {
 
       <div className="sidebar-foot">
         {health === null ? (
-          <span>연결 확인 중…</span>
+          <span>{t("status.checking")}</span>
         ) : health.apiKey ? (
           <>
             <span className="status-dot" />
-            <span>{health.model === "demo" ? "미리보기 데모" : `Claude · ${health.mock ? "예시 모드" : health.model}`}</span>
+            <span>{health.model === "demo" ? t("status.demo") : health.mock ? t("status.mock") : t("status.connected", { model: health.model })}</span>
           </>
         ) : (
           <>
             <span className="status-dot bad" />
-            <span>API 키 필요</span>
+            <span>{t("status.needKey")}</span>
           </>
         )}
       </div>

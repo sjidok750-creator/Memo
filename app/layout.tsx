@@ -5,10 +5,10 @@ import { Sidebar } from "@/components/Sidebar";
 import { asset } from "@/lib/demo";
 
 export const metadata: Metadata = {
-  title: { default: "나만의 메모장", template: "%s · 나만의 메모장" },
-  description: "유튜브 링크, 책 제목, 사진을 넣으면 핵심이 강조된 요약 메모가 됩니다.",
+  title: { default: "Gist", template: "%s · Gist" },
+  description: "유튜브 링크, 책 제목, 사진을 넣으면 핵심이 강조된 요약 메모가 됩니다. The gist of what you watch and read.",
   manifest: asset("/manifest.webmanifest"),
-  appleWebApp: { capable: true, title: "메모장", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Gist", statusBarStyle: "default" },
   icons: { apple: asset("/icons/apple-touch-icon.png") },
 };
 
@@ -26,12 +26,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <head>
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&display=swap" />
       </head>
       <body>
         <MemoProvider>

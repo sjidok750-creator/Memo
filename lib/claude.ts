@@ -4,6 +4,7 @@ import { MemoContentSchema } from "./schema";
 import type { MemoContent } from "./types";
 import type { Transcript, VideoInfo } from "./youtube";
 import { getBrowserApiKey } from "./browser-key";
+import type { Lang } from "./i18n";
 
 export const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5";
 const EFFORT = process.env.CLAUDE_EFFORT as "low" | "medium" | "high" | "xhigh" | "max" | undefined;
@@ -45,7 +46,13 @@ export async function testApiKey(key: string): Promise<{ ok: true; model: string
   }
 }
 
-const SYSTEM = `당신은 사용자의 개인 메모장에 들어갈 '읽기 노트'를 쓰는 편집자다. 모든 출력은 한국어, 간결한 문어체(~다)로 쓴다.
+const LANG_RULE: Record<Lang, string> = {
+  ko: "모든 출력(title, oneLiner, summary, keyPoints, quotes, tags, meta 의 문장)은 한국어, 간결한 문어체(~다)로 쓴다.",
+  en: "Write every output field (title, oneLiner, summary, keyPoints, quotes, tags, meta) in natural, concise English. Quotes from non-English sources are translated to English, with the original in note.",
+  ja: "すべての出力（title, oneLiner, summary, keyPoints, quotes, tags, meta）は自然で簡潔な日本語の常体（〜だ・である）で書く。日本語以外の出典の引用は日本語に訳し、原文は note に入れる。",
+};
+
+const systemFor = (lang: Lang) => `당신은 사용자의 개인 메모장에 들어갈 '읽기 노트'를 쓰는 편집자다. ${LANG_RULE[lang]}
 
 원칙
 - 원문(자막·이미지·검색 결과)에 충실하게 정리한다. 원문에 없는 내용을 지어내지 않는다.
@@ -67,7 +74,7 @@ export interface SummaryResult {
   model: string;
 }
 
-async function runSummary(userContent: Anthropic.Beta.BetaContentBlockParam[], tools: Tool[] = [], signal?: AbortSignal): Promise<SummaryResult> {
+async function runSummary(userContent: Anthropic.Beta.BetaContentBlockParam[], tools: Tool[] = [], signal?: AbortSignal, lang: Lang = "ko"): Promise<SummaryResult> {
   const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: userContent }];
   const format = betaZodOutputFormat(MemoContentSchema);
 
@@ -80,7 +87,7 @@ async function runSummary(userContent: Anthropic.Beta.BetaContentBlockParam[], t
         fallbacks: "default",
         thinking: { type: "adaptive" },
         output_config: { format, ...(EFFORT ? { effort: EFFORT } : {}) },
-        system: SYSTEM,
+        system: systemFor(lang),
         messages,
         ...(tools.length ? { tools } : {}),
       },
@@ -126,7 +133,7 @@ async function runSummary(userContent: Anthropic.Beta.BetaContentBlockParam[], t
 
 const MAX_TRANSCRIPT_CHARS = 300_000;
 
-export async function summarizeYouTube(info: VideoInfo, transcript: Transcript | null, signal?: AbortSignal): Promise<SummaryResult> {
+export async function summarizeYouTube(info: VideoInfo, transcript: Transcript | null, signal?: AbortSignal, lang: Lang = "ko"): Promise<SummaryResult> {
   if (MOCK) return mock("youtube", info.title ?? "유튜브 영상");
   const head = [
     "다음 유튜브 영상의 읽기 노트를 작성한다.",
@@ -159,7 +166,7 @@ ${body}
 - meta.channel 에 채널명, meta.author 에 주요 발화자(알 수 있을 때).
 - 자막을 직접 읽었으므로 confidence 는 high.
 - 제목이 없거나 낚시성이면 내용을 담은 제목을 새로 짓는다.`;
-    return runSummary([{ type: "text", text }], [], signal);
+    return runSummary([{ type: "text", text }], [], signal, lang);
   }
 
   const text = `${head}
@@ -168,25 +175,26 @@ ${body}
 - 확인되지 않는 내용은 쓰지 않는다. 검색 결과 기반이므로 confidence 는 medium 이하.
 - summary 첫 문단에 "자막이 없어 영상 설명과 관련 자료를 바탕으로 정리했다"는 취지를 자연스럽게 한 문장 넣는다.
 - quotes 는 출처가 확실한 발언만.`;
-  return runSummary([{ type: "text", text }], WEB_TOOLS, signal);
+  return runSummary([{ type: "text", text }], WEB_TOOLS, signal, lang);
 }
 
-export async function summarizeBook(query: string, signal?: AbortSignal): Promise<SummaryResult> {
+export async function summarizeBook(query: string, signal?: AbortSignal, lang: Lang = "ko"): Promise<SummaryResult> {
   if (MOCK) return mock("book", query);
   const text = `다음 책의 읽기 노트를 작성한다: "${query}"
 
 1) web_search 로 책을 정확히 특정한다 (정식 제목, 저자, 출판사, 출간 연도). 같은 제목의 책이 여럿이면 가장 널리 알려진 책을 고른다. 검색은 꼭 필요한 만큼만 (최대 6회).
 2) 책의 핵심 주장·구조·중요 내용을 summary 로 2~5문단 정리하고, keyPoints 4~8개를 뽑는다. 핵심 문장은 **강조**.
-3) 명대사·명문장을 quotes 로 5~10개 발췌한다. 검색 결과나 확실한 기억으로 확인되는 문장만. 번역서는 통용되는 한국어 번역을 우선하고, 원문을 알면 note 에 적는다. 인용문에는 강조 마크를 쓰지 않는다.
+3) 명대사·명문장을 quotes 로 5~10개 발췌한다. 검색 결과나 확실한 기억으로 확인되는 문장만. 번역서는 출력 언어에서 통용되는 번역을 우선하고, 원문을 알면 note 에 적는다. 인용문에는 강조 마크를 쓰지 않는다.
 4) title 은 책의 정식 제목만 (저자는 meta.author 에).
 5) 책을 특정하지 못했으면 title 에 입력값을 그대로 쓰고 summary 첫 문단에 그 사실을 밝힌 뒤 confidence 를 low 로 둔다.`;
-  return runSummary([{ type: "text", text }], WEB_TOOLS, signal);
+  return runSummary([{ type: "text", text }], WEB_TOOLS, signal, lang);
 }
 
 export async function summarizePhoto(
   image: { mediaType: string; base64: string },
   note: string | undefined,
   signal?: AbortSignal,
+  lang: Lang = "ko",
 ): Promise<SummaryResult> {
   if (MOCK) return mock("photo", note || "사진 메모");
   const text = `첨부한 사진의 읽기 노트를 작성한다.${note ? `\n\n사용자가 덧붙인 메모: "${note}"` : ""}
@@ -203,6 +211,7 @@ export async function summarizePhoto(
     ],
     [],
     signal,
+    lang,
   );
 }
 
