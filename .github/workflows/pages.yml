@@ -1,21 +1,22 @@
 name: Deploy demo to GitHub Pages
 
+# 정적 데모를 빌드해 gh-pages 브랜치에 올린다.
+# 저장소 Settings → Pages 의 Source 가 "Deploy from a branch: gh-pages / (root)" 이면 된다
+# (gh-pages 브랜치가 처음 생길 때 GitHub 이 보통 자동으로 잡아 준다).
 on:
   push:
     branches: [main, "claude/**"]
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,24 +24,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - run: npm ci
       - name: Build static demo
         run: node scripts/build-demo.mjs
         env:
           DEMO_BASE_PATH: /${{ github.event.repository.name }}
-      - uses: actions/upload-pages-artifact@v3
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: out
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
+          force_orphan: true

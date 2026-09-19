@@ -71,4 +71,4 @@ npm run typecheck  # 타입 검사
 DEMO_BASE_PATH=/Memo npm run build:demo   # out/ 에 정적 사이트 생성
 ```
 
-`.github/workflows/pages.yml` 이 푸시할 때마다 이 데모를 GitHub Pages 에 올립니다. 저장소 Settings → Pages 에서 Source 가 **GitHub Actions** 로 되어 있어야 합니다. 주소는 `https://<계정>.github.io/<저장소 이름>/` 입니다.
+`.github/workflows/pages.yml` 이 푸시할 때마다 이 데모를 빌드해 `gh-pages` 브랜치에 올립니다. 저장소 Settings → Pages 에서 Source 가 **Deploy from a branch / gh-pages** 인지 확인하세요 (처음 한 번은 자동으로 잡히는 경우가 많습니다). 주소는 `https://<계정>.github.io/<저장소 이름>/` 입니다.
