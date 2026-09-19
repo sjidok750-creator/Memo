@@ -1,0 +1,15 @@
+{
+  "name": "Gist",
+  "short_name": "Gist",
+  "description": "유튜브·책·사진을 넣으면 핵심이 강조된 요약 메모가 됩니다.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f5f0",
+  "theme_color": "#d97757",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
